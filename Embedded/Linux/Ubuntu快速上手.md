@@ -126,3 +126,30 @@ firewall-cmd --reload
 使用自带的 firefox，转到网址 localhost:9090，即可进入 cockpit 后台管理页面
 
 <br>
+
+### Vs2022 配置 Ubuntu 开发环境
+
+首先 vmware（或者其他虚拟机平台）安装好 ubuntu  
+确认网络连接的方式为 NAT
+
+在 ubuntu 下安装以下包：
+
+```sh
+# gdb在较高版本的ubuntu已经默认安装了，此处可忽略
+sudo apt install gdb
+
+# ssh配置的方法请看上文
+sudo apt install ssh
+
+sudo apt install g++
+sudo apt install gdbserver
+```
+
+<br>
+
+打开 VS2022，创建新的 linux console 项目
+
+新项目创建完毕，点击 debug 按钮（即绿色小三角），弹出窗口让你选择远程主机的地址、用户名、密码  
+按照虚拟机中的来填即可
+
+<br>
