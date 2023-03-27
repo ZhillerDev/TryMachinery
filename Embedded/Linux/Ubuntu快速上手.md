@@ -68,3 +68,25 @@ gedit /root/.profile
 <br>
 
 #### ssh 链接 root
+
+首先使用 root：`sudo -i`
+
+sshd_config 是专门管理 ssh 的文件；
+
+使用 gedit 开启该文件：`gedit /etc/ssh/sshd_config`
+
+找到 Authentication 这一行，在他下面依次添加如下所示代码，添加完毕后保存即可
+
+```
+# Authentication:
+LoginGraceTime 120
+PermitRootLogin yes
+StrictModes yes
+```
+
+之后别忘了重启 ssh 服务：`/etc/init.d/ssh restart`
+
+然后使用本地终端测试一下能否 ssh 链接：`ssh localhost`  
+刚开始可能叫你输入密码啥的，直接 root 密码搞进去就行了
+
+<br>
