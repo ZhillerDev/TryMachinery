@@ -90,3 +90,39 @@ StrictModes yes
 刚开始可能叫你输入密码啥的，直接 root 密码搞进去就行了
 
 <br>
+
+### cockpit
+
+> 简介：Cockpit 是红帽开发的网页版图像化服务管理工具，优点是无需中间层，且可以管理多种服务。
+
+<br>
+
+#### 基础
+
+安装 cockpit 并开启对应端口
+
+```sh
+apt install cockpit
+systemctl enable --now cockpit.socket
+```
+
+<br>
+
+一般的，linux 防火墙会自动阻止端口的开启，我们要让防火墙允许对应端口
+
+这里有两种方式，分别对应两种不同的防火墙插件（ubuntu 默认使用 ufw）
+
+```sh
+# ufw方法，非常简单直接允许即可
+ufw allow 9090
+
+# firewall方法，需要允许指定端口后重新加载才可以
+firewall-cmd --add-service=cockpit --permanent
+firewall-cmd --reload
+```
+
+<br>
+
+使用自带的 firefox，转到网址 localhost:9090，即可进入 cockpit 后台管理页面
+
+<br>
