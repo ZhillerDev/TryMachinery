@@ -129,6 +129,8 @@ firewall-cmd --reload
 
 ### Vs2022 配置 Ubuntu 开发环境
 
+> 参考文章：[点击访问](https://blog.csdn.net/weixin_42602434/article/details/109138157?ops_request_misc=%257B%2522request%255Fid%2522%253A%2522167992706216800197048458%2522%252C%2522scm%2522%253A%252220140713.130102334..%2522%257D&request_id=167992706216800197048458&biz_id=0&utm_medium=distribute.pc_search_result.none-task-blog-2~all~sobaiduend~default-1-109138157-null-null.142^v76^insert_down1,201^v4^add_ask,239^v2^insert_chatgpt&utm_term=vs%E5%BC%80%E5%8F%91linux&spm=1018.2226.3001.4187)
+
 首先 vmware（或者其他虚拟机平台）安装好 ubuntu  
 确认网络连接的方式为 NAT
 
