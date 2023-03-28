@@ -42,3 +42,59 @@ void main(){
 <br>
 
 ### LED 闪烁
+
+#### 生成延迟函数
+
+STC-ISP 自带了一个帮我们生成延迟函数的小工具
+
+按下图所示找到该工具，下面是我们需要注意的几个关键点
+
+1. 系统频率：查看自己开发板中晶振频率，一般会写在上面
+2. 定时长度
+3. 8051 指令集：选择 STC-Y1 指令集，因为这个刚好对应 STC89C52
+
+![](./images/pz2/p3.png)
+
+<br>
+
+#### main.c
+
+```c
+#include <REGX52.H>
+#include <INTRINS.H> // 注意哦，这里导入了一个新的头文件
+
+// 生成的延迟函数
+void Delay500ms()		//@11.0592MHz
+{
+	unsigned char i, j, k;
+
+	_nop_();
+	i = 4;
+	j = 129;
+	k = 119;
+	do
+	{
+		do
+		{
+			while (--k);
+		} while (--j);
+	} while (--i);
+}
+
+
+void main()
+{
+	// 在循环中调用延迟函数，实现灯泡闪烁
+	while(1)
+	{
+		P2=0xFE;
+		Delay500ms();
+		P2=0xFF;
+		Delay500ms();
+	}
+}
+```
+
+<br>
+
+### 流水灯
