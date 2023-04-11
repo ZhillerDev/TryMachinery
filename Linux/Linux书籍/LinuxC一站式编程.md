@@ -57,4 +57,12 @@ gcc 编译回显所有警告 `gcc -Wall xxx.c`
 
 <br>
 
-#### C 艹复习
+#### C 复习
+
+复习个鬼，自己找 `cprimerplus` 和 c++`primer` 读去
+
+下一节直接上手 gdb
+
+<br>
+
+### gdb
