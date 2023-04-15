@@ -381,10 +381,10 @@ je loop_exit  # je即比较，如果上方代码相等，那么跳转到对应�
 incl %edi   # edi寄存器移到下一位（即加载下一个数据）
 movl data_items(,%edi,4), %eax
 cmpl %ebx,%eax
-jle start_loop
+jle start_loop # jle(jump if less than or equal)
 
 movl %eax,%ebx
-jmp start_loop
+jmp start_loop # jmp是一个无条件跳转指令，类似c语言中的default
 
 # 循环结束，结尾定义一个loop_exit
 loop_exit:
@@ -392,3 +392,49 @@ loop_exit:
 movl$1,%eax
 int $0x80
 ```
+
+<br>
+
+#### 寻址方式
+
+访问内存的三个方式：数组基地址、元素长度和下标
+
+内存寻址指令的通用格式：ADDRESS_OR_OFFSET(%BASE_OR_OFFSET,%INDEX,MULTIPLIER)
+
+几种主要的寻址方式
+
+- 直接寻址：只能用 ADDRESS_OR_OFFSET 寻址
+- 变址寻址：如 movI data_items (,%edi,4)中的%eax
+- 间接寻址：只使用 BASE_OR_OFFSET 寻址
+- 基址寻址：只使用 ADDRESS_OR_OFFSET 和 BASE_OR_OFFSET 寻址，便于访问结构体成员
+- 立即数寻址
+- 寄存器寻址
+
+<br>
+
+#### ELF 文件
+
+UNIX 可执行文件均采用 ELF 格式，它包含以下三种类型
+
+- 可重定位的目标文件（Relocatable，或者 Object File）
+- 可执行文件（Executable）
+- 共享库（Shared Object，或者 Shared Library）
+
+<br>
+
+程序简易的汇编、链接、运行流程
+
+1. 编写汇编程序保存为 demo.s 文件
+2. 汇编器读取 demo.s，将源码中的.section 编译为目标文件的 Section
+3. 链接器将目标文件的 Section 汇总为 Segment，生成可执行文件 demo
+4. 加载器根据 Segment 信息加载运行程序！
+
+<br>
+
+### 汇编与 C
+
+#### 函数调用
+
+直接使用 `gcc -S main.c` 即可生成不带二进制目标文件的汇编代码 main.s
+
+-v 选项可详细了解编译过程 `gcc -v main.c -o main`
