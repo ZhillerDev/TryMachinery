@@ -529,3 +529,44 @@ voIatiIe unsigned char send;
 <br>
 
 ### 链接深入
+
+#### extern 与 static
+
+如果我们编写两个文件 main.c 以及 static.c  
+若要在 main.c 调用 static.c 中的方法 push，需要使用 extern 关键词进行原型的声明，从而让编译器找到该函数！
+
+若不使用 extern，编译器会“自己判断”并根据隐式法则生成一个很大概率是错的原型，从而导致程序崩溃
+
+`extern` 关键字修饰的函数名具有 `External Linkage`
+
+如下代码所示，会自动找到外部文件 `static.c` 的方法 `push` 并调用它
+
+```c
+/＊ main.c ＊/
+#include <stdio.h>
+
+extern void push(char);
+
+int main(void)
+{
+    push('a');
+    return 0;
+}
+```
+
+> 重点分析：extern void push 只是一个声明！真正的内存分配是在函数所在的文件内执行的（如 static.c），main.c 只是引用了函数 push 而已
+
+<br>
+
+`static` 关键字修饰的函数名具有 `Internal Linkage`
+
+顾名思义，被此关键词修饰的方法或者属性均包内可视，外部无法调用
+
+<br>
+
+对于需要调用外部文件的变量或者函数时：
+
+- 变量声明必须要有 extern
+- 函数声明可以省略 extern
+
+<br>
