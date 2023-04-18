@@ -570,3 +570,29 @@ int main(void)
 - 函数声明可以省略 extern
 
 <br>
+
+#### 头文件
+
+命令 gcc 编译时，头文件从子目录 demo 中查找 `gcc -c main.c -l demo`
+
+<br>
+
+Header Guard 写法：这是为了头文件被重复包含的一种写法，即宏定义名使用全大写形式
+
+```h
+/＊ stack.h ＊/
+
+// 宏定义格式：[宏全大写名称]_H 或者 __[宏全大写名称]_H__
+#ifndef STACK_H
+#define STACK_H
+extern void push(char);
+extern char pop(void);
+extern int is_empty(void);
+#endif
+```
+
+<br>
+
+#### 定义与命名的规则
+
+<br>
