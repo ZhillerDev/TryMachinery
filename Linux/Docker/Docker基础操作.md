@@ -264,5 +264,3 @@ docker rm [OPTIONS] CONTAINER [CONTAINER...]
 ```
 docker rm my-container
 ```
-
-这些是 Docker 的一些基本用法。Docker 还有更多的功能和选项，可以查看 Docker 官方文档进行更深入的学习。
