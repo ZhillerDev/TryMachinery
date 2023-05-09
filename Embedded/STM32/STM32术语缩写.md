@@ -132,7 +132,7 @@
 
 <br>
 
-### 存储器
+### 寄存器与存储器
 
 #### FSMC
 
@@ -166,8 +166,145 @@ FSMC 将外部存储器划分为固定大小为 256M 字节的四个存储块（
 
 <br>
 
-### 总线与时钟
+#### BKP
+
+> BKP（Backup registers）是备份寄存器
+
+通过对 BKP 寄存器进行读写来保证数据在掉电后仍然可持久存储
+
+重新上电后可再次通过 BKP 获取数据以恢复状态
+
+BKP 可通过电磁攻击以及侧信道攻击非法篡改数据，故不是十分安全
+
+<br>
+
+### 时钟
 
 #### RTC 时钟
 
 > STM32F4 的 RTC，是一个独立的 BCD 定时器/计数器。并且提供日历功能
+
+RTCCLK 为 RTC 的时钟源，为独立的时钟模块  
+LSE 与 RTCCLK 结合最为密切
+
+RTCCLK 初始化时必须要和系统主时钟进行同步！
+
+<br>
+
+#### LSE 时钟
+
+> LSE 时钟 低速外部晶体振荡器（Low Speed External oscillator）时钟
+
+一般以外部 32.768kHz 晶体振荡器作为时钟源
+
+稳定性和精度非常高，可以在掉电和复位后自动恢复，并且可以提供秒级别的计时精度
+
+<br>
+
+#### LSI 时钟
+
+> LSI 时钟是指低速内部时钟（Low Speed Internal oscillator）时钟
+
+由内部 RC 振荡器提供，通常使用 40kHz 的频率
+
+受环境温度与工作电压影响较大，成本低但精度不高
+
+<br>
+
+#### HSE 时钟
+
+> HSE 时钟是指高速外部晶体振荡器（High Speed External oscillator）时钟
+
+稳定性与精度极高，提供 MHz 级别时钟信号
+
+常用于高速串行通信、定时器、中断处理等高性能时钟
+
+<br>
+
+#### BIN 与 BCD
+
+BIN 是指二进制数（Binary）  
+BCD 是指二进制编码十进制数（Binary Coded Decimal）
+
+BCD 比二进制数占用更多的存储空间，但无需进行二进制到十进制的转换
+
+BIN BCD 常用于数字表示与时钟芯片等场合
+
+<br>
+
+#### HCLK
+
+> HCLK 表示 CPU 总线时钟
+
+`HCLK` 的频率取决于外部晶振或内部 RC 振荡器的时钟源，可以通过配置寄存器进行设置
+
+<br>
+
+#### PLL
+
+> PLL 是 Phase Locked Loop 的缩写，翻译过来是“锁相环”
+
+用于产生稳定的高频时钟信号
+
+`PLL` 通常由一个比较器、一个 `VCO（Voltage Controlled Oscillator）`、一个相位检测器和一个反馈回路组成
+
+PLL 常用于将外部晶振的低频时钟信号倍频或分频，产生更高频率的系统时钟信号
+
+<br>
+
+### 总线
+
+#### AHB
+
+> AHB 是 Advanced High-performance Bus 的缩写，翻译过来是“高级高性能总线”
+
+使用该总线，CPU 可以直接访问内部的存储器和外设，还提供了一些控制和管理信号，如时钟、复位、中断等，用于协调各个模块的工作
+
+AHB 的带宽问题为限制整个系统速率与性能的关键指标
+
+<br>
+
+#### APB
+
+> APB 全称为 Advanced Peripheral Bus
+
+用于连接各种外设和低速模块，如 GPIO、UART、SPI
+
+APB1 链接低速外设  
+APB2 链接高速外设
+
+APB 总线的时钟来源于 AHB 总线，可以通过 APB 分频系数的设置来调整 APB 总线的工作频率和性能
+
+<br>
+
+#### AXI
+
+> AXI 全称为 Advanced eXtensible Interface，是一种高级的总线结构
+
+支持高速数据处理，最高传输速率可达 10Gbps 以上
+
+低延迟、可扩展性高、具有极佳的兼容性与可靠性
+
+常用于链接复杂外设，譬如 DMA、Ethernet、USB
+
+<br>
+
+#### FSMC
+
+> FSMC 全称为 Flexible Static Memory Controller
+
+最高传输速率可达 100MHz 以上
+
+FSMC 总线通常用于连接高速、大容量的存储器，如 LCD 显示屏、图像处理器、音频处理器等
+
+<br>
+
+#### SDIO
+
+> SDIO 全称为 Secure Digital Input/Output，是一种基于 SD 卡物理接口的高速数据传输标准
+
+STM32 的一个高速外设模块，提供 SD 与 MMC 卡接口
+
+支持多种传输协议，包括 SPI 模式与 SD 卡协议
+
+<br>
