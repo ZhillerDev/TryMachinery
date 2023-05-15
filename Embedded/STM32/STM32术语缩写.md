@@ -15,7 +15,7 @@
 
 <br>
 
-`PSC 定时器/计数器的预分频器寄存器（Prescaler Register）`
+`PSC 预分频器寄存器（Prescaler Register）`
 
 - 设置定时器/计数器的时钟预分频系数，以改变计时器时钟的频率
 - 用于改变计数器的计数速度
@@ -23,7 +23,7 @@
 
 <br>
 
-`CNT 定时器/计数器的计数器寄存器（Counter Register）`
+`CNT 计数器寄存器（Counter Register）`
 
 - 用于储存定时器/计数器的计数值
 - 可以在达到指定计数值时触发相应的事件或中断
@@ -52,7 +52,7 @@
 
 <br>
 
-`ARR（Auto-reload register）自动重装值寄存器`
+`ARR 自动重装值寄存器 （Auto-reload register）`
 
 - 它用于设定计数器计数的上限值，当计数器计数达到自动重装值时，计数器会重新从 0 开始计数
 - 在定时器应用中，自动重装值决定了定时器的定时周期
@@ -76,7 +76,7 @@
 
 ### 中断
 
-`NVIC（Nested Vectored Interrupt Controller）`
+`NVIC 嵌套中断向量控制器（Nested Vectored Interrupt Controller）`
 
 - 负责管理所有外部和内部中断请求，并且支持多级中断嵌套
 - 可以优先级和向量号（即中断服务函数的地址）来区分和处理不同的中断请求
@@ -181,7 +181,7 @@ RTCCLK 初始化时必须要和系统主时钟进行同步！
 
 #### LSE 时钟
 
-> LSE 时钟 低速外部晶体振荡器（Low Speed External oscillator）时钟
+> LSE 时钟 低速外部晶振（Low Speed External oscillator）时钟
 
 一般以外部 32.768kHz 晶体振荡器作为时钟源
 
@@ -191,7 +191,7 @@ RTCCLK 初始化时必须要和系统主时钟进行同步！
 
 #### LSI 时钟
 
-> LSI 时钟是指低速内部时钟（Low Speed Internal oscillator）时钟
+> LSI 时钟 低速内部晶振（Low Speed Internal oscillator）时钟
 
 由内部 RC 振荡器提供，通常使用 40kHz 的频率
 
@@ -201,7 +201,7 @@ RTCCLK 初始化时必须要和系统主时钟进行同步！
 
 #### HSE 时钟
 
-> HSE 时钟是指高速外部晶体振荡器（High Speed External oscillator）时钟
+> HSE 时钟 高速外部晶振（High Speed External oscillator）时钟
 
 稳定性与精度极高，提供 MHz 级别时钟信号
 
@@ -300,8 +300,6 @@ STM32 的一个高速外设模块，提供 SD 与 MMC 卡接口
 ### ADC & DAC
 
 <br>
-
-#### ADCCLK
 
 ### 电源引脚
 
