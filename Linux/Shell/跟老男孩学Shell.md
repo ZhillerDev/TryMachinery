@@ -279,7 +279,7 @@ test [ -f file ] && echo 1 || echo 2
 
 #### 文本测试表达式
 
-![](./img/oldboy/ob1.png)
+![](./img/oldboy/ob5.png)
 
 ```sh
 # 对单个文件变量进行测试
@@ -399,3 +399,339 @@ fi
 ### Shell 函数
 
 <br>
+
+#### 基础执行
+
+shell 中定义函数有三种办法
+
+```sh
+# 标准格式
+function demo1(){}
+
+# 有function修饰的情况下可不写小括号
+function demo2{}
+
+# 无function修饰必须要有小括号
+demo3(){}
+```
+
+> 特别注意，由于 ubuntu 中 sh 和 bash 相互冲突的关系，执行脚本时务必使用 bash 命令，否则当你使用 function 定义函数的时候会一直报错！！！
+
+<br>
+
+### case
+
+<br>
+
+#### 基本
+
+请注意 case 使用后的闭合问题，开头 case，结尾 esac
+
+```sh
+#! /bin/bash
+
+read -p "input your number:" ans
+
+# 双引号内写判据
+case "$ans" in
+  # 对应值+右小括号
+  1)
+  echo "1";; # 末尾两个引号可视为break
+  2)
+  echo "2";;
+  # *）可视为default
+  *)
+  echo "i dont understand what you input"
+  exit; # 最后一个程序结尾直接退出
+esac # 别忘了case末尾需要闭合！
+```
+
+<br>
+
+#### case 企业级案例
+
+此次案例展示：使用函数传参的方式来为 conf 添加用户
+
+```sh
+[root@oldboy scripts]# cat add-openvpn-user
+#! /bin/bash
+
+. /etc/init.d/functions
+
+#config file path
+FILE_PATH=/etc/openvpn_authfile.conf           #＜==这是openvpn的登录授权文件路径。
+[ ! -f $FILE_PATH ] && touch $FILE_PATH        #＜==如果变量对应的文件不存在，则创建文件。
+usage(){                                       #＜==帮助函数。
+    cat ＜＜EOF                                #＜==这是一个可以替代echo的输出菜单等内
+                                                        容的方法。
+    USAGE: `basename $0` {-add|-del|-search} username
+EOF
+}
+
+#judge run user
+if [ $UID -ne 0 ] ; then    #＜==必须是root用户，才能执行本脚本。
+    echo "Youare not supper user, please call root! "
+    exit 1;
+fi
+
+#judge arg numbers.
+if [ $# -ne 2 ] ; then      #＜==传入的参数必须为两个。
+    usage
+    exit 2
+fi
+#满足条件后进入case语句判断。
+case "$1" in                #＜==获取命令行第一个参数的值。
+    -a|-add)                #＜==如果匹配-a或-add，则执行下面的命令语句。
+        shift               #＜==将$1清除，将$2替换为$1，位置参数左移。
+        if grep "^$1$" ${FILE_PATH} ＞/dev/null 2＞&1     #＜==过滤命令行第一个参
+                                                                数的值，如果有
+            then              #＜==则执行下面的指令。
+            action $"vpnuser, $1 is exist" /bin/false
+            exit
+            else              #＜==如果文件中不存在命令行传参的一个值，则执行下面的指令。
+            chattr -i ${FILE_PATH}             #＜==解锁文件。
+            /bin/cp ${FILE_PATH} ${FILE_PATH}.$(date +%F%T)
+#＜==备份文件（尾部加时间）。
+            echo "$1" ＞＞ ${FILE_PATH}        #＜==将第一个参数（即用户名）加入到文件。
+            [ $? -eq 0 ] && action $"Add $1" /bin/true      #＜==如果返回值为0，提
+                                                                示成功。
+            chattr +i ${FILE_PATH}             #＜==给文件加锁。
+        fi
+        ;;
+    -d|-del)       #＜==如果命令行的第一个参数匹配-d或-del，则执行下面的命令语句。
+        shift
+        if [ `grep "\b$1\b" ${FILE_PATH}|wc -l` -lt 1 ]   #＜==过滤第一个参数值，
+                                                                并看文件中是否存在。
+
+            then     #＜==如果不存在，则执行下面的指令。
+            action $"vpnuser, $1 is not exist." /bin/false
+            exit
+        else       #＜==否则执行下面的指令，存在才删除，不存在就提示不存在，不需要删除。
+            chattr -i ${FILE_PATH}                #＜==给文件解锁，准备处理文件的内容。
+            /bin/cp ${FILE_PATH} ${FILE_PATH}.$(date +%F%T)
+#＜==备份文件（尾部加时间）。
+            sed -i "/^${1}$/d" ${FILE_PATH}       #＜==删除文件中包含命令行传参的用户。
+            [ $? -eq 0 ] && action $"Del $1" /bin/true
+#＜==如果返回值为0，提示成功。
+            chattr +i ${FILE_PATH}                #＜==给文件加锁。
+            exit
+        fi
+        ;;
+    -s|-search)    #＜==如果命令行的第一个参数匹配-s或-search，就执行下面的命令语句。
+        shift
+        if [ `grep -w "$1" ${FILE_PATH}|wc -l` -lt 1 ]
+#＜==过滤第一个参数值，并看文件中是否存在。
+            then
+            echo $"vpnuser, $1 is not exist."; exit
+        else
+            echo $"vpnuser, $1 is exist."; exit
+        fi
+        ;;
+    ＊)
+        usage
+        exit
+        ;;
+esac
+```
+
+<br>
+
+### while 循环
+
+<br>
+
+#### 当型与直到
+
+当型即 while，当条件成立时才继续执行
+
+```sh
+while ＜条件表达式＞
+do
+    指令...
+done
+```
+
+直到即 until，当条件成立后就停止循环
+
+```sh
+until ＜条件表达式＞
+do
+    指令...
+done
+```
+
+<br>
+
+每隔两秒输出一次负载值的程序
+
+```sh
+#! /bin/bash
+
+while [ 1 ]
+do
+  uptime
+  sleep 2
+done
+```
+
+<br>
+
+#### 后台运行
+
+![](./img/oldboy/ob8.png)
+
+比如这样子可以让程序后台执行 `sh demo1.sh &`
+
+<br>
+
+#### while 实战
+
+每个十秒检测一个网站是否正常
+
+```sh
+#! /bin/sh
+if [ $# -ne 1 ]; then               #＜==判断，若传参的个数不为1，
+    echo $"usage $0 url"            #＜==则打印正确使用提示。
+    exit 1                          #＜==以返回值1退出脚本。
+fi
+
+while true                          #＜==永远为真，进入while循环。
+do
+    if [ `curl -o /dev/null --connect-timeout 5 -s -w "%{http_code}"   $1|
+egrep -w "200|301|302"|wc -l` -ne 1 ]
+    #＜==对传入的URL参数获取状态码，过滤200、301、302任意之一转为数字，如果不等于1，
+则表示状态信息不对。
+        then
+        echo "$1 is error."         #＜==提示URL访问错误。
+        #echo "$1 is error."|mail -s "$1 is error." 31333741--@qq.com
+                                    #＜==发送邮件报警。
+    else
+        echo "$1 is ok"             #＜==否则，提示URL访问OK。
+    fi
+    sleep 10   #＜==休息10秒继续执行while循环，注意，当while后面有true等永远为真的条件时，一般在循环里要有退出循环的条件或类似sleep休息的命令，否则会大量消耗系统资源。
+done
+```
+
+> 日常开发时，推荐吧常用的函数放置到函数库 function 里面，类似于前端封装的工具类，便于后期调用
+
+<br>
+
+每一个小时检测某个 IP 是否访问量超过了 500 次，如果是，则判定其为恶意的，直接自动封禁
+
+```sh
+file=$1          #＜==定义一个变量接收命令行传参，参数为日志文件类型。
+
+while true
+do
+    awk '{print $1}' $1|grep -v "^$"|sort|uniq -c ＞/tmp/tmp.log
+    #＜==分析传入的日志文件，并在排序去重后追加到一个临时文件里。
+    exec ＜/tmp/tmp.log     #＜==读取上述临时文件。
+    while read line         #＜==进入while循环处理。
+    do
+        ip=`echo $line|awk '{print $2}'`          #＜==获取文件中的每一行的第二列。
+        count=`echo $line|awk '{print $1}'`       #＜==获取文件中的每一行的第一列。
+        if [ $count -gt 500 ] && [ `iptables -L -n|grep "$ip"|wc -l` -lt 1 ]
+        #＜==如果PV数大于500，并且防火墙里没有封过此IP。
+            then
+            iptables -I INPUT -s $ip -j DROP      #＜==则封掉PV数大于500的IP。
+            echo "$line is dropped" ＞＞/tmp/droplist_$(date +%F).log
+                                                    #＜==记录处理日志。
+        fi
+    done
+    sleep 3600  #＜==读者可以按分钟进行分析，不过日志的分割或过滤也得按分钟才行。
+done
+```
+
+<br>
+
+### for & select
+
+<br>
+
+#### for 循环方法
+
+由两种典型的定义 for 循环的方法
+
+```sh
+# shell中foreach风格的for
+# 下面展示的被迭代的数据为一个数组，数字之间使用空格隔开
+for num in 1 2 3 4 5
+do
+  echo $num
+done
+
+# C风格的for
+for ((i=1; i<=3; i++))
+do
+  echo $i
+done
+```
+
+<br>
+
+配合其他语法可以实现特殊的效果
+
+```sh
+# 花括号列表形式
+for n in {5..1}        #＜==实质上也相当于列表。
+do
+    echo $n
+done
+
+# seq步长，反引号实际上规定了一个执行linux命令的区域
+for n in `seq 5 -1 1` #＜==5是起始数字，-1是步长，即每次减一，1是结束数字。
+do
+    echo $n
+done
+```
+
+<br>
+
+#### linux 生成随机数
+
+```sh
+# $RANDOM 系统变量，生成随机数
+# 后面的参数表示使用md5进行加密
+echo "oldboy$RANDOM"|md5sum|cut -c 8-15
+
+# 借助openssl生成安全稳定的随机数
+openssl rand -base64 8
+
+# 通过date获取随机数
+date +%s%N
+
+# 借助UUID生成随机数
+cat /proc/sys/kernel/random/uuid
+
+# 使用expect的子库mkpassowrd快速生成随机数
+# -l长度 -d数字个数 -c小写字母个数 -C大写字母个数 -s特殊字符个数
+mkpasswd -l 9 -d 2 -c 3 -C 3 -s 1
+```
+
+<br>
+
+#### select
+
+select 的作用和 foreach 对应功能差不多一样，可以借鉴
+
+他可以根据给定数组或者列表，输出对应列表项（即 select 过后，echo 输出的结果将以列表的形式呈现）
+
+```sh
+arr=(hey shit pig)
+select s in "${arr[@]}"
+do
+  echo $s
+done
+```
+
+<br>
+
+### 循环控制
+
+<br>
+
+![](./img/oldboy/ob9.png)
+
+<br>
+
+### Shell 数组
