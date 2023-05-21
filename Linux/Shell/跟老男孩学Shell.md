@@ -764,3 +764,634 @@ echo ${array[＊]} #＜==使用＊或@可以得到整个数组的内容。
 echo ${array[@]}  #＜==使用＊或@可以得到整个数组的内容。
 
 ```
+
+其他数组操作
+
+```sh
+# 按照索引修改，若索引对应值未定义，会直接定义该值
+arr[1]=one
+
+# 删除数组元素
+unset arr[1]
+# 或者直接删除整个数组
+unset arr
+
+# 截取数组下标1-3的数组元素（不包括下标3）
+echo ${arr[@]:1:3}
+
+# 将数组中的1全部替换为b
+echo ${arr[@]/1/b}
+```
+
+<br>
+
+#### 数组开发实践
+
+使用循环批量输出数组元素
+
+```sh
+#! /bin/bash
+array=(1 2 3 4 5)
+for((i=0; i＜${#array[＊]}; i++))  #＜==从数组的第一个下标0开始，循环数组的所有下标。
+do
+    echo ${array[i]}               #＜==打印数组元素。
+done
+```
+
+<br>
+
+#### shell 数组相关面试题
+
+例题：利用 bash for 循环打印下面这句话中字母数不大于 6 的单词
+
+```sh
+# 数组的方式实现
+arr=(I am oldboy teacher welcome to oldboy training class)
+for ((i=0; i＜${#arr[＊]}; i++))
+do
+    if [ ${#arr[$i]} -lt 6 ]
+        then
+        echo "${arr[$i]}"
+    fi
+done
+echo -----------------------
+for word in ${arr[＊]}
+do
+    if [ `expr length $word` -lt 6 ]; then
+        echo $word
+    fi
+done
+```
+
+<br>
+
+批量检查多个网址是否正常（能否 ping 通）
+
+```sh
+#! /bin/bash
+# this script is created by oldboy.
+# e_mail:31333741@qq.com
+# function:case example
+# version:1.3
+. /etc/init.d/functions
+
+check_count=0
+url_list=(                           #＜==定义检测的URL数组，包含多个URL地址。
+http://blog.oldboyedu.com
+http://blog.etiantian.org
+http://oldboy.blog.51cto.com
+http://10.0.0.7
+)
+
+function wait()                      #＜==定义3,2,1倒计时函数。
+{
+    echo -n '3秒后，执行检查URL操作．';
+    for ((i=0; i＜3; i++))
+    do
+        echo -n "."; sleep 1
+    done
+    echo
+}
+function check_url()                 #＜==定义检测URL的函数。
+{
+    wait                             #＜==执行倒计时函数。
+    for ((i=0; i＜`echo ${#url_list[＊]}`; i++)) #＜==循环数组元素。
+    do
+        wget -o /dev/null -T 3 --tries=1 --spider ${url_list[$i]} ＞/dev/null 2＞&1
+                                        #＜==检测是否可以访问数组元素的地址。
+        if [ $? -eq 0 ]              #＜==如果返回值为0，则表示访问成功。
+            then
+            action "${url_list[$i]}" /bin/true #＜==优雅地显示成功结果。
+        else
+            action "${url_list[$i]}" /bin/false #＜==优雅地显示失败结果。
+        fi
+    done
+    ((check_count++))                                  #＜==检测次数加1。
+}
+main(){                                                #＜==定义主函数。
+    while true                                         #＜==开启一个持续循环。
+    do
+        check_url                                      #＜==加载检测url的函数。
+        echo "-------check count:${check_count}---------"
+        sleep 10                                       #＜==间歇10秒。
+    done
+}
+main                                                   #＜==调用主函数运行程序。
+```
+
+<br>
+
+### Shell 脚本开发规范
+
+<br>
+
+顶部最好添加以下规范性信息
+
+```sh
+#Date:    16:29 2012-3-30
+#Author: Created by oldboy
+#Mail:       31333741@qq.com
+#Function:This scripts function is.....
+#Version: 1.1
+```
+
+Shell 脚本中尽量不要用中文注释，应用英文注释
+
+Shell 脚本命名应以“.sh”为扩展名。例如：`script-name.sh`
+
+Shell 脚本应存放在固定的路径下，例如：`/server/scripts`。
+
+字符串赋值给变量时应加双引号，并且等号前后不能有空格
+
+<br>
+
+全局变量也称环境变量，它的定义应全部大写，多个单词间可用`“_”`号连接，并且最好采用 `export` 来定义  
+如 `export DEMO="demo"`
+
+局部变量可以使用大驼峰或者小驼峰
+
+引用变量时，若变量前后都有字符，则需要使用 `${APACHE_ERR}`（加大括号的方式）引用变量  
+变量内容为字符串时，需要使用 `"${APACHE_ERR}"`（外面加双引号的方式）引用变量  
+变量内容为整数时，则最好直接使用 `$APACHE_ERR` 来引用变量
+
+<br>
+
+shell 脚本高级命名规范
+1）常规 Shell 脚本使用统一的后缀：`.sh`，例如`oldboy.sh`  
+2）模块的启动和停止脚本统一命名为`start_`模块名`．sh`和`stop_`模块名`．sh  `  
+3）监控脚本通常以`*_mon.sh`为后缀  
+4）控制脚本一般以`*_ctl.sh`为后缀。
+
+<br>
+
+Shell 的通用变量以配置文件的形式单独存放，以`“功能．cfg”`来命名
+
+通用的公共函数可以存放于`/etc/init.d/functions`
+
+<br>
+
+### Shell 脚本调试
+
+当在 windows 下编写的 shell 脚本移植到 linux 后，发现执行后一直报错，此时可以使用 `dos2unix` 格式化一下  
+注：dos2unix 需要额外安装  
+`dos2unix demo.sh`
+
+<br>
+
+使用 bash 自带参数进行调试  
+`sh [-nvx] scripts.sh`  
+`-n`：不会执行该脚本，仅查询脚本语法是否有问题，并给出错误提示。  
+`-v`：在执行脚本时，先将脚本的内容输出到屏幕上，然后执行脚本，如果有错误，也会给出错误提示。  
+`-x`：将执行的脚本内容及输出显示到屏幕上，这是对调试很有用的参数。
+
+<br>
+
+### Shell 脚本开发环境配置
+
+<br>
+
+#### vimrc 配置
+
+在使用 vim 是，我们通常需要提前配置 vim 配置文件 vimrc  
+他一般位于 `/etc/vimrc`
+
+下面展示的是书中作者给出的 vimrc 配置文件主要配置
+
+```sh
+" ～/.vimrc
+" vim config file
+" date 2008-09-05
+" Created by oldboy
+" blog:http://oldboy.blog.51cto.com
+"""""""""""""""""""""
+" =＞ 全局配置
+"""""""""""""""""""""
+"关闭兼容模式
+set nocompatible
+
+"设置历史记录步数
+set history=100
+
+"开启相关插件
+filetype on
+filetype plugin on
+filetype indent on
+
+"当文件在外部被修改时，自动更新该文件
+set autoread
+
+"激活鼠标的使用
+set mouse=a
+
+"""""""""""""""""""""
+" =＞ 字体和颜色
+"""""""""""""""""""""
+"开启语法
+syntax enable
+
+"设置字体
+"set guifont=dejaVu\ Sans\ MONO\ 10
+"
+""设置配色
+"colorscheme desert
+
+"高亮显示当前行
+set cursorline
+hi cursorline guibg=#00ff00
+hi CursorColumn guibg=#00ff00
+
+"""""""""""""""""""""
+" =＞ 代码折叠功能 by oldboy
+"""""""""""""""""""""
+"激活折叠功能
+set foldenable
+
+"设置按照语法方式折叠（可简写set fdm=XX）
+"有6种折叠方法：
+"manual 手工定义折叠
+"indent 更多的缩进表示更高级别的折叠
+"expr    用表达式来定义折叠
+"syntax 用语法高亮来定义折叠
+"diff    对没有更改的文本进行折叠
+"marker 对文中的标志进行折叠
+set foldmethod=manual
+
+"设置折叠区域的宽度
+"如果不为0，则在屏幕左侧显示一个折叠标识列
+"分别用“-”和“+”来表示打开和关闭的折叠。
+set foldcolumn=0
+
+"设置折叠层数为3
+setlocal foldlevel=3
+
+"设置为自动关闭折叠
+set foldclose=all
+
+"用空格键来代替zo和zc快捷键实现开关折叠
+"zo  O-pen a fold    (打开折叠)
+"zc  C-lose a fold  (关闭折叠)
+"zf  F-old creation (创建折叠)
+nnoremap ＜space＞ @=((foldclosed(line('.')) ＜ 0) ? 'zc' : 'zo')＜CR＞
+"""""""""""""""""""""
+" =＞ 文字处理 by oldboy
+"""""""""""""""""""""
+"使用空格来替换Tab
+set expandtab
+
+"设置所有的Tab和缩进为4个空格
+set tabstop=4
+
+"设定 ＜＜ 和 ＞＞ 命令移动时的宽度为4
+set shiftwidth=4
+
+"使得按退格键时可以一次删掉4个空格
+set softtabstop=4
+
+set smarttab
+
+"缩进，自动缩进(继承前一行的缩进)
+"set autoindent命令关闭自动缩进，是下面配置的缩写。
+"可使用autoindent命令的简写，即“:set ai”和“:set noai”。
+"还可以使用“ :set ai sw=4”在一个命令中打开缩进并设置缩进级别。
+set ai
+
+"智能缩进
+set si
+
+"自动换行
+set wrap
+
+"设置软宽度
+set sw=4
+"""""""""""""""""""""
+" =＞ Vim 界面 by oldboy
+"""""""""""""""""""""
+"Turn on WiLd menu
+set wildmenu
+
+"显示标尺
+set ruler
+
+"设置命令行的高度
+set cmdheight=1
+
+"显示行数
+"set nu
+
+"Do not redraw, when running macros.. lazyredraw
+set lz
+
+"设置退格
+set backspace=eol, start, indent
+
+"Bbackspace and cursor keys wrap to
+set whichwrap+=＜, ＞, h, l
+
+"Set magic on（设置魔术）
+set magic
+
+"关闭遇到错误时的声音提示
+"关闭错误信息响铃
+set noerrorbells
+
+"关闭使用可视响铃代替呼叫
+set novisualbell
+
+"显示匹配的括号([{和}])
+set showmatch
+
+"How many tenths of a second to blink
+set mat=2
+
+"搜索时高亮显示搜索到的内容
+set hlsearch
+
+"搜索时不区分大小写
+"还可以使用简写（“:set ic”和“:set noic”）
+set ignorecase
+
+"""""""""""""""""""""
+" =＞ 编码设置
+"""""""""""""""""""""
+"设置编码
+set encoding=utf-8
+"设置文件编码
+set fileencodings=utf-8
+
+"设置终端编码
+set termencoding=utf-8
+"""""""""""""""""""""
+" =＞ 其他设置 by oldboy 2010
+"""""""""""""""""""""
+"开启新行时使用智能自动缩进
+set smartindent
+set cin
+set showmatch
+
+"隐藏工具栏
+set guioptions-=T
+
+"隐藏菜单栏
+set guioptions-=m
+
+"置空错误铃声的终端代码
+set vb t_vb=
+
+"显示状态栏 (默认值为 1, 表示无法显示状态栏)
+set laststatus=2
+"粘贴不换行问题的解决方法
+
+set pastetoggle=＜F9＞
+
+"设置背景色
+set background=dark
+
+"设置高亮相关
+highlight Search ctermbg=black   ctermfg=white guifg=white guibg=black
+```
+
+> 将 vim 的配置文件．vimrc 上传到 Linux 系统的“～”目录下，然后退出 SSH 客户端重新登录，即可应用
+
+<br>
+
+#### vim 常用指令速查
+
+![](./img/oldboy/ob10.png)
+
+![](./img/oldboy/ob11.png)
+
+![](./img/oldboy/ob12.png)
+
+![](./img/oldboy/ob13.png)
+
+<br>
+
+### Linux 信号与 trap 命令
+
+<br>
+
+使用 `kill -l` 或者 `trap -l` 查看当前系统的所有信号
+
+下图展示了 linux 最重要的几个信号及其对应含义
+![](./img/oldboy/ob14.png)
+
+<br>
+
+这是 trap 命令于命令行中的具体使用方式（具有同时处理多个信号以及处理单个信号两个模式）
+
+```sh
+# 仅处理单个信号
+[root@oldboy ～]# trap 'echo oldboy' 2   #＜==当执行此命令时，按Ctrl+c键，就会执行echo命令，这里结尾的2就是Ctrl+c键对应的数字信号。
+
+[root@oldboy ～]# trap "echo oldgirl" INT  #＜==当执行此命令时，按Ctrl+c键，就会执行echo命令，这里结尾的INT就是Ctrl+c键对应的信号名称。
+
+# 同时处理多个信号
+[root@oldboy ～]# trap "" 1 2 3 20 15  #＜==执行这些数字信号，什么都不做。
+[root@oldboy ～]# trap ":" 1 2 3 20 15 #＜==执行这些数字信号，恢复对应功能。
+[root@oldboy ～]# ^C
+[root@oldboy ～]# trap "" HUP INT QUIT TSTP TERM #＜==执行这些名称信号，什么都不做。
+[root@oldboy ～]# trap ":" HUP INT QUIT TSTP TERM #＜==执行这些名称信号，恢复对应功能。
+[root@oldboy ～]# trap "" `echo {1..64}`        #＜==屏蔽1-64的所有数字信号。
+```
+
+`stty -a`可以列出中断信号与键盘的对应信息
+
+<br>
+
+### expect 自动化交互程序
+
+<br>
+
+> expect 是一款自动化交互工作流程库，能大幅度简化运维时的重复操作
+
+Expect 的自动交互工作流程简单说明，依次执行如下操作
+
+spawn 启动指定进程 →expect 获取期待的关键字 →send 向指定进程发送指定字符 → 进程执行完毕，退出结束
+
+<br>
+
+#### 安装与基础使用
+
+安装 expect
+
+```sh
+[root@oldboy ～]# rpm -qa expect           #＜==检查是否安装。
+[root@oldboy ～]# yum install expect -y    #＜==执行安装命令。
+[root@oldboy ～]# rpm -qa expect           #＜==再次检查是否安装。
+```
+
+<br>
+
+随意编写一个可以 ssh 链接云主机并且自动填写用户名和密码以便快速登入的 expect 脚本 `demo.exp`
+
+```sh
+#! /usr/bin/expect       #＜==脚本开头解析器，和Shell类似，表示程序使用Expect解析。
+spawn ssh root@192.168.33.130 uptime #＜==执行ssh命令（注意开头必须要有spawn，
+                                            否则无法实现交互）。
+expect "＊password"      #＜==利用Expect获取执行上述ssh命令输出的字符串是否为期待的
+                                字符串＊password，这里的＊是通配符。
+send "123456\n" #＜==当获取到期待的字符串＊password时，则发送123456密码给系统，\n为换行
+expect eof      #＜==处理完毕后结束Expect。
+```
+
+然后执行他
+
+```sh
+expect demo.exp
+```
+
+<br>
+
+#### 快速了解 expect 文件基本结构
+
+在 Expect 自动交互程序执行的过程中，spawn 命令是一开始就需要使用的命令  
+如果没有 spawn 命令，Expect 程序将会无法实现自动交互
+
+`spawn [选项] [需要自动交互的命令或程序]`
+
+<br>
+
+expect 命令的作用就是获取 spawn 命令执行后的信息，看看是否和其事先指定的相匹配，一旦匹配上指定的内容就执行 expect 后面的动作
+
+`expect  表达式  [动作]`
+
+```sh
+spawn ssh root@192.168.33.130 uptime
+expect "＊password" {send   "123456\r"}
+```
+
+expect 命令还有一种高级用法，即它可以在一个 expect 匹配中多次匹配不同的字符串，并给出不同的处理动作，此时只需要将匹配的所有字符串放在一个{}（大括号）中就可以了
+
+```sh
+#! /usr/bin/expect
+spawn ssh root@192.168.33.130 uptime
+expect {     #＜==起始大括号前要有空格。
+    "yes/no"     {exp_send "yes\r"; exp_continue} #＜==exp_send和send类似。
+    "＊password" {exp_send "123456\r"}
+}
+expect eof
+```
+
+<br>
+
+`exp_send` 和 `send` 命令是 `Expect` 中的动作命令，用法类似，即在 expect 命令匹配指定的字符串后，发送指定的字符串给系统，这些命令可以支持一些特殊转义符号
+
+如果需要一次匹配多个字符串，那么不同的匹配之间就要加上 `exp_continue` 否则 `expect` 将不会自动输入指定的字符串
+
+`exit` 命令的功能类似于 Shell 中的 exit，即直接退出 Expect 脚本
+
+下图是对上方工程的一个总结表
+
+![](./img/oldboy/ob15.png)
+
+<br>
+
+设置变量以及变量的打印
+
+```sh
+# 设置变量
+set value1 "123456"
+
+# 打印指定变量
+puts $value1
+```
+
+相比于 shell，在 expect 中的条件语句就显得很亲切了
+
+```sh
+if {条件表达式} {
+    指令
+} else {
+    指令
+}
+```
+
+<br>
+
+`timeout` 是 Expect 中的一个控制时间的关键字变量，它是一个全局性的时间控制开关
+
+这是 timeout 的使用方法，表示 `expect` 只要执行超过了 3s，就必定执行结尾的 timeout 动作
+
+```sh
+[root@oldboy ～]# cat 18_11_2.exp
+#! /usr/bin/expect
+spawn ssh root@192.168.33.130 uptime
+expect {
+    -timeout 3
+    "yes/no" {exp_send "yes\r"; exp_continue}
+    timeout   {puts "Request timeout by oldboy."; return}
+}
+```
+
+<br>
+
+### 企业 shell 面试题
+
+<br>
+
+#### 面试题 1：批量生成随机字符文件名
+
+使用 for 循环在/oldboy 目录下批量创建 10 个 html 文件，其中每个文件需要包含 10 个随机小写字母加固定字符串 oldboy
+
+```sh
+#! /bin/bash
+Path=/oldboy                                #＜==定义生成文件的路径。
+[ -d "$Path" ]||mkdir -p $Path              #＜==如果定义的路径不存在则创建。
+for n in `seq 10`                           #＜==for循环10次，即创建10个文件。
+do
+    random=$(openssl rand -base64 40|sed 's#[^a-z]##g'|cut -c 2-11)
+                                            #＜==将10位随机字符赋值给变量。
+    touch $Path/${random}_oldboy.html       #＜==根据题意生成所需要的文件。
+done
+```
+
+<br>
+
+#### 面试题 2：批量改名
+
+文件名中的 oldboy 字符串全部改成 oldgirl（最好用 for 循环实现），并且将扩展名 html 全部改成大写
+
+```sh
+#! /bin/sh
+Filename=_oldgirl.HTML    #＜==定义替换后的目标字符串。
+Dirname="/oldboy"         #＜==定义操作目录。
+cd $Dirname||exit 1       #＜==切换到指定目录下，如果不成功则退出。
+for n in `ls`             #＜==遍历当前目录获取文件名列表，并循环处理。
+do
+    name=$(echo ${n}|awk -F '_' '{print $1}')      #＜==定义替换后的目标。
+    mv $n ${name}${Filename}                       #＜==实际mv改名操作命令。
+done
+```
+
+<br>
+
+#### 面试题 3：批量创建特殊要求用户
+
+批量创建 10 个系统账号 oldboy01-oldboy10 并设置密码（密码为随机数，要求是字符和数字等的混合）
+
+<br>
+
+#### 面试题 4：扫描网络内存活主机
+
+写一个 Shell 脚本，判断 10.0.0.0/24 网络里，当前在线的 IP 有哪些？
+
+```sh
+#! /bin/sh
+CMD="ping -W 2 -c 2"                  #＜==定义ping命令及参数。
+Ip="10.0.0."                          #＜==IP前半部分。
+for n in $(seq 254)                   #＜==IP后半部分，1-254。
+do
+    {
+    $CMD $Ip$n &＞ /dev/null          #＜==对指定IP实行ping政策。
+    if [ $? -eq 0 ]; then             #＜==如果返回值为0，则证明该IP对应的主机存在。
+        echo "$Ip$n is ok"            #＜==打印提示。
+    fi
+    }&                                #＜==Shell的并发检测功能，批量ping，快速返回结果。
+done
+```
+
+> 此题可以使用 nmap 直接解决
+
+<br>
+
+### 子 shell 与 shell 嵌套模式
