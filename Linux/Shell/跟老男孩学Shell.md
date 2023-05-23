@@ -1395,3 +1395,113 @@ done
 <br>
 
 ### 子 shell 与 shell 嵌套模式
+
+<br>
+
+#### 概念及使用方式
+
+子 Shell 的本质可以理解为 Shell 的子进程（系统运行的应用程序几乎都是从 init（Pid 为 1 的进程）进程派生而来的，所有这些应用程序都可以视为 init 进程的子进程，而 init 则为它们的父进程）
+
+`pstree -a` 命令可以看到 init 及系统中其他进程的进程树信息
+
+通常情况下，当 Shell 脚本执行时，会向系统内核请求启动一个新的进程，以便在该进程中执行脚本的命令及子 Shell 脚本
+
+<br>
+
+子 shell 产生的场景
+
+1. 通过 Shell 脚本来实现一个由“&”产生的子 Shell
+2. 使用管道功能生成子 shell
+3. 实现由“()”产生的子 Shell
+4. 通过调用外部 Shell 脚本产生子 Shell
+
+<br>
+
+while 产生的子 shell 问题  
+当使用 while 时会创建一个子 shell，其中的变量对于父 shell 均不可见，故当 while 循环完毕后，父 shell 对应变量依旧没变，只是子 shell 变了而已，二者相互隔离互不影响，此时就会导致输出错误
+
+<br>
+
+#### 调用脚本模式
+
+`fork` 模式是最普通的脚本调用方式，即直接在父脚本里面用“/bin/sh /directory/script.sh”来调用脚本  
+（SubShell 可以从 ParentShell 继承环境变量，但是默认情况下 SubShell 中的环境变量不能带回 ParentShell）
+
+`exec` 模式不需要新开一个 Subshell 来执行被调用的脚本。被调用的脚本与父脚本在同一个 Shell 内执行，使用 exec 调用一个新脚本以后，父脚本中 exec 执行之后的脚本内容就不会再执行了
+
+`source` 模式与 fork 模式的区别是不会新开一个 Subshell 来执行被调用的脚本，而是在同一个 Shell 中执行
+
+<br>
+
+#### 现场脚本调用方式
+
+特殊的 parentshell 脚本实现以及调用全流程
+
+这是父 shell 对应的脚本
+
+```sh
+#! /bin/bash
+#Author:oldboy training
+#Blog:http://oldboy.blog.51cto.com
+. /etc/init.d/functions
+function usage(){                              #＜==定义帮助函数。
+    echo "Usage:$0 {exec|source|fork}"
+    exit 1
+}
+function ParentFun(){                          #＜==定义父脚本主要信息的输出。
+    plus_color "ParentShell start." red        #＜==打印父脚本开始提示。
+    export ParentVar="Parent"                  #＜==在父脚本中定义环境变量。
+    echo "PID for ParentShell.sh before "$1":`plus_color "$$" "green"`"
+                                                #＜==打印父脚本PID。
+    echo "ParentShell.sh: \$ParentVar is `plus_color "$ParentVar" "green"`"
+                                                #＜==输出父脚本环境变量信息。
+    case "$1" in                               #＜==利用$1接收不同的模式。
+        exec)                                  #＜==如果匹配exec，
+            echo "using exec…"
+            exec ./SubShell.sh ; ;             #＜==则通过exec调用子Shell脚本。
+        source)                                #＜==如果匹配source，
+            echo "using source…"
+            source ./SubShell.sh ; ;           #＜==则通过source调用子Shell脚本。
+        fork)                                  #＜==如果匹配fork，
+            echo "using source…"
+            /bin/sh ./SubShell.sh ; ;          #＜==则通过sh（fork模式）调用子Shell脚本。
+        ＊)                                    #＜==如果匹配其他，
+            usage                              #＜==则给出正确使用方法。
+    esac
+    echo "PID for ParentShell.sh after "$1":`plus_color "$$" "green"`"
+                                                #＜==打印父脚本PID。
+    echo "ParentShell.sh: Get: \$SUB_VAR=`plus_color "$SUB_VAR" "blue"`"
+                                                #＜==打印子脚本变量信息。
+    plus_color "ParentShell stop." red         #＜==父脚本结束提示。
+}
+function main(){ #＜==主函数
+    if [ $# -ne 1 ]; then
+        usage
+    fi
+    ParentFun $＊ #＜==$＊接收函数外传参（调用脚本模式字符串），传给函数内的$1。
+}
+main $＊            #＜==$＊接受脚本传参，转到函数里的$＊或$1，注意此处的$＊不要用引号。
+```
+
+这是子 shell 对应的脚本
+
+```sh
+#! /bin/bash
+#Author:oldboy training
+#Blog:http://oldboy.blog.51cto.com
+. /etc/init.d/functions      #＜==加载函数库，主要是下文使用的plus_color函数。
+plus_color "SubShell start." yellow     #＜==打印子Shell开始提示。
+echo "PID for SubShell.sh: `plus_color "$$" "blue"`" #＜==打印子Shell的PID信息。
+echo -e "SubShell.sh get \$ParentVar=`plus_color "$ParentVar" "blue"`"
+                                        #＜==打印父Shell变量。
+export SUB_VAR="Sub"                  #＜==定义子Shell变量。
+echo "SubShell.sh: \$SUB_VAR=`plus_color "$SUB_VAR" "blue"`"
+                                        #＜==输出子Shell变量。
+plus_color "SubShell stop." yellow #＜==打印子Shell结束信息。
+```
+
+<br>
+
+exec 与 fork 与 source 区别分异
+
+<br>
