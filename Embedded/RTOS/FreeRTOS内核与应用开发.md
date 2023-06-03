@@ -152,3 +152,119 @@ FreeRTOS 中，对中断的开和关是通过操作 BASEPRI 寄存器来实现
 <br>
 
 #### 临界段出入
+
+```c
+/* 在中断场合，临界段可以嵌套 */
+{
+    uint32_t ulReturn;
+    /* 进入临界段，临界段可以嵌套 */
+    ulReturn = taskENTER_CRITICAL_FROM_ISR();
+    /* 临界段代码 */
+    /* 退出临界段 */
+    taskEXIT_CRITICAL_FROM_ISR( ulReturn );
+}
+
+
+/* 在非中断场合，临界段不能嵌套 */
+{
+    /* 进入临界段 */
+    taskENTER_CRITICAL();
+    /* 临界段代码 */
+    /* 退出临界段*/
+    taskEXIT_CRITICAL();
+}
+```
+
+<br>
+
+### 空闲任务与阻塞延迟
+
+<br>
+
+#### 空闲任务
+
+RTOS 的特性即让 CPU 持续保持工作状态
+
+当 CPU 无任务可执行时，会进入空闲状态，此时就需要执行一个空闲任务
+
+下面是空闲任务创建的对应步骤
+
+1. 定义空闲任务的栈空间
+2. 定义空闲任务的 TCB
+3. 在调度器启动函数 vTaskStartScheduler()中创建空闲任务
+4. 空闲任务作为最低优先级而插入就绪列表排头
+
+<br>
+
+#### 阻塞延时
+
+> 阻塞延时的阻塞是指任务调用该延时函数后，任务会被剥夺 CPU 使用权，然后进入阻塞状态，直到延时结束，任务重新获取 CPU 使用权才可以继续运行
+
+当所有任务都处于延时状态时，CPU 自动调取空闲任务执行
+
+阻塞延时基本实现函数 `vTaskDelay`
+
+```c
+void vTaskDelay( const TickType_t xTicksToDelay )
+{
+    TCB_t *pxTCB = NULL;
+    /* 获取当前任务的TCB */
+    pxTCB = pxCurrentTCB;(1)
+    /* 设置延时时间 */
+    pxTCB->xTicksToDelay = xTicksToDelay;(2)
+    /* 任务切换 */
+    taskYIELD();(3)
+}
+```
+
+<br>
+
+调用 tashYIELD()会产生 `PendSV` 中断，在 PendSV 中断服务函数中会调用上下文切换函数 `vTaskSwitchContext()`，该函数的作用是寻找最高优先级的就绪任务，然后更新 `pxCurrentTCB`
+
+<br>
+
+xTicksToDelay 表示延时时间，时间按照周期递减，此递减周期时由 SysTick 提供的
+
+操作系统中最小的时间单位就是 `SysTick` 的中断周期，我们称之为一个 tick
+
+<br>
+
+### 多优先级
+
+> 在 FreeRTOS 中，数字优先级越小，逻辑优先级也越小，这与 RT-Thread 和 μC/OS 刚好相反。
+
+<br>
+
+就绪列表 pxReadyTasksLists 是一个数组，它存储着就绪任务的 TCB  
+数组下标即为优先级
+
+空闲任务的优先级最低，其数组下标永远为 0
+
+如果想让任务支持优先级，直接让 pxCurrentTCB（全局 TCB 指针）指向优先级最高的那个任务即可！
+
+查找最高优先级任务有两种方法：通用方法、处理器优化后方法
+
+<br>
+
+#### 通用方法
+
+1. 定义 uxTopReadyPriority，存储创建任务的优先级，默认为 0
+2. 将 uxTopReadyPriority 的值暂存到局部变量 uxTopPriority
+3. 从某一最高优先级开始，查找任一就绪列表，如果找到符合优先级的任务，停止 while 循环，更新 pxCurrentTCB
+4. 如果找不到符合条件的任务，就切换到低一级优先级，继续执行就绪列表查找，直到找到为止
+5. 执行完毕，更新 uxTopPriority 的值到 uxTopReadyPriority
+
+<br>
+
+#### 优化后方法
+
+根据前导零计算
+
+例如，有如下 uxTopReadyPriority 的值（000011）；  
+0 表示对应任务不参与优先级计算，1 表示参与运算；  
+优先级依然按照从小到大优先级依次增大的原则；
+
+可见 uxTopReadyPriority 有四个前导零，后面的两位才参与优先级计算，且最后一位的优先级达到最高  
+空闲任务优先级为 0，但是不出现在 uxTopReadyPriority 里面，所以首位 0 并不代表空闲任务！
+
+<br>
