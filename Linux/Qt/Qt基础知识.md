@@ -4,6 +4,10 @@
 
 #### widget.h
 
+widget 对象的头文件
+
+一般会直接在头文件导入所有后续在 cpp 文件内用到的类，所以 `include` 基本都会写在这里
+
 ```cpp
 // 头文件标志起始
 #ifndef WIDGET_H
@@ -129,6 +133,100 @@ qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 ```
+
+<br>
+
+### 信号与槽
+
+<br>
+
+#### 自定义信号
+
+> 实现功能：点击按钮发射一个信号，widget 获取信号后执行对应槽函数输出一段信息（此过程含有信息的传递）
+
+新建一个 `Widget` 文件，UI 设计图添加一个 pushbutton，重命名为 firstBtn，并且为其添加一个空的 clicked() 槽
+
+此时的 `Widget.h` 文件应该是这样的
+
+```cpp
+#ifndef WIDGET_H
+#define WIDGET_H
+
+#include <QWidget>
+#include <QDebug>
+
+QT_BEGIN_NAMESPACE
+namespace Ui { class Widget; }
+QT_END_NAMESPACE
+
+class Widget : public QWidget
+{
+    Q_OBJECT
+
+public:
+    Widget(QWidget *parent = nullptr);
+    ~Widget();
+
+// 自定义一个新的信号，其接收一个字符串参数
+signals:
+    void firstSignal(QString msg);
+
+// firstEmit为自定义槽函数，用于响应自定义信号firstSignal
+// on_firstBtn_clicked为按钮点击相应槽函数
+private slots:
+    void firstEmit(QString msg);
+    void on_firstBtn_clicked();
+
+private:
+    Ui::Widget *ui;
+};
+#endif // WIDGET_H
+```
+
+代码清单 `Widget.cpp`
+
+注意，如果信号顶一个 N 个形参，那么对应接收的槽也必须有对应数量与类型的形参！因为发射的信号的所有参数值都会一一传递给槽函数，所有参数都是对应关系！
+
+```cpp
+#include "Widget.h"
+#include "ui_Widget.h"
+
+Widget::Widget(QWidget *parent)
+    : QWidget(parent)
+    , ui(new Ui::Widget)
+{
+    ui->setupUi(this);
+
+    // 第一步，connect链接信号和槽
+    // 参数一：信号发出者，这里选择当前widget
+    // 参数二：欲发出的信号
+    // 参数三：信号接收者，这里也是当前widget
+    // 参数四：欲处理对应信号的槽函数
+    connect(this,&Widget::firstSignal,this,&Widget::firstEmit);
+}
+
+Widget::~Widget()
+{
+    delete ui;
+}
+
+// 第二步：定义处理信号的槽函数
+// 函数有一个形参，用于接收信号传递过来的参数
+void Widget::firstEmit(QString msg)
+{
+    // 调试输出信号发射过来的参数msg
+    qDebug() << msg;
+}
+
+// 第三步：定义发射信号的按钮响应槽函数
+void Widget::on_firstBtn_clicked()
+{
+    // 使用emit发射对应名称的信号，注意我们这里传入了一个字符串作为参数
+    emit firstSignal("shit");
+}
+```
+
+此时保存文件，编译运行，可见点击按钮后就会在 console 里面看见我们输出的调试信息了！
 
 <br>
 
