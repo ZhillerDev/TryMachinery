@@ -436,3 +436,244 @@ void MainWindow::saveActionSlot()
 ```
 
 <br>
+
+#### ctrl+s 保存
+
+此处需要使用事件处理，保持上一节写的记事本代码不变
+
+打开 MainWindow.h
+
+```cpp
+#define MAINWINDOW_H
+
+#include <QMainWindow>
+#include <QFileDialog>
+#include <QMessageBox>
+#include <QKeyEvent>
+
+QT_BEGIN_NAMESPACE
+namespace Ui { class MainWindow; }
+QT_END_NAMESPACE
+
+class MainWindow : public QMainWindow
+{
+    Q_OBJECT
+
+public:
+    MainWindow(QWidget *parent = nullptr);
+    ~MainWindow();
+
+    // 在此处注册按键点击事件
+    void keyPressEvent(QKeyEvent *k);
+```
+
+注册完毕后，回到 MainWindow.cpp
+
+添加对应的监听事件内容
+
+```cpp
+// 响应键盘按键点击事件
+void MainWindow::keyPressEvent(QKeyEvent *k)
+{
+    // ControlModifier表示修饰按键，此修饰按键即为ctrl
+    // Qt::Key_S表示主要按键，此按键为S
+    if(k->modifiers()==Qt::ControlModifier && k->key()==Qt::Key_S){
+        // 同时按下ctrl+s，就会调用保存文件的方法！
+        saveActionSlot();
+    }
+}
+```
+
+<br>
+
+### Socket
+
+<br>
+
+#### 简易 TcpSocket 链接
+
+注意，无论是客户端还是服务端，只要使用了 socket 服务，就必须在每个项目的 pro 文件内添加 network 字段，否则直接无法使用！
+
+```cpp
+// 在首行末尾添加network，注意与前一个单词有一个空格的距离
+QT       += core gui network
+
+greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
+
+CONFIG += c++11
+
+...
+```
+
+代码清单 `Widget.h`
+
+```cpp
+#ifndef WIDGET_H
+#define WIDGET_H
+
+#include <QWidget>
+#include <QTcpSocket>
+#include <QHostAddress>
+#include <QMessageBox>
+
+QT_BEGIN_NAMESPACE
+namespace Ui { class Widget; }
+QT_END_NAMESPACE
+
+class Widget : public QWidget
+{
+    Q_OBJECT
+
+public:
+    Widget(QWidget *parent = nullptr);
+    ~Widget();
+
+private slots:
+
+    // 对应链接服务端和取消链接两个按钮槽
+    void on_cancelBtn_clicked();
+    void on_connectBtn_clicked();
+
+private:
+    Ui::Widget *ui;
+
+    // 定义QTcpSocket客户端
+    QTcpSocket *socket;
+};
+#endif // WIDGET_H
+```
+
+<br>
+
+代码清单 `Widget.cpp`
+
+```cpp
+#include "Widget.h"
+#include "ui_Widget.h"
+
+Widget::Widget(QWidget *parent)
+    : QWidget(parent)
+    , ui(new Ui::Widget)
+{
+    ui->setupUi(this);
+
+    socket = new QTcpSocket;    // 创建scoket对象
+}
+
+Widget::~Widget()
+{
+    delete ui;
+}
+
+
+void Widget::on_cancelBtn_clicked()
+{
+    this->close();
+}
+
+// 链接服务器
+void Widget::on_connectBtn_clicked()
+{
+    // 获取IP地址以及对应的端口号
+    QString ip = ui->ipLineEdit->text();
+    QString port  = ui->portLineEdit->text();
+
+    // 连接到服务器
+    socket->connectToHost(QHostAddress(ip),port.toShort());
+
+    connect(socket,&QTcpSocket::connected,[this](){
+        QMessageBox::information(this,"连接提示","成功连接到服务器！");
+    });
+
+    connect(socket,&QTcpSocket::disconnected,[this](){
+        QMessageBox::warning(this,"连接提示","服务器链接已经断开！");
+    });
+}
+```
+
+<br>
+
+同理，如法炮制一个服务端，具体代码如下
+
+代码清单 Widget.h
+
+```cpp
+#ifndef WIDGET_H
+#define WIDGET_H
+
+#include <QWidget>
+
+// 记得导入这两个头文件
+#include <QTcpServer>
+#include <QTcpSocket>
+
+// 默认的服务端端口，需要客户端指定为此端口才可以连接到服务端上
+#define DEFAULT_PORT 10086
+
+QT_BEGIN_NAMESPACE
+namespace Ui { class Widget; }
+QT_END_NAMESPACE
+
+class Widget : public QWidget
+{
+    Q_OBJECT
+
+public:
+    Widget(QWidget *parent = nullptr);
+    ~Widget();
+
+private slots:
+    // 建立新链接槽
+    void newClientHandler();
+
+private:
+    Ui::Widget *ui;
+
+    // 定义服务端QTcpServer
+    QTcpServer *server;
+};
+#endif // WIDGET_H
+```
+
+<br>
+
+代码清单 Widget.cpp
+
+```cpp
+#include "Widget.h"
+#include "ui_Widget.h"
+
+Widget::Widget(QWidget *parent)
+    : QWidget(parent)
+    , ui(new Ui::Widget)
+{
+    ui->setupUi(this);
+
+    // 实例化服务端
+    server = new QTcpServer;
+    // 开始侦听指定IP和端口
+    // QHostAddress::AnyIPv4表示监听任意IPV4地址，DEFAULT_PORT为之前定义的常量，值为10086
+    server->listen(QHostAddress::AnyIPv4,DEFAULT_PORT);
+
+    // 定义当服务端建立新链接的信号
+    connect(server,&QTcpServer::newConnection,this,&Widget::newClientHandler);
+}
+
+Widget::~Widget()
+{
+    delete ui;
+}
+
+// 建立新链接的方法
+void Widget::newClientHandler()
+{
+    // 为服务端和客户端之间创建一个持久性链接（基于TCP）
+    QTcpSocket *socket = server->nextPendingConnection();
+
+    // 获取客户端IP和端口，显示到页面的label上面
+    ui->ipLabel->setText(socket->peerAddress().toString());
+    ui->portLabel->setText(QString::number(socket->peerPort()));
+}
+```
+
+<br>
