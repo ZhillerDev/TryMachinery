@@ -470,6 +470,36 @@ MainWindow::MainWindow(QWidget *parent)
 
 ### 事件处理
 
+#### 覆写指定事件实现检测
+
+QObject 为我们提供了丰富的关于鼠标、键盘等事件的检测，我们仅需要对其覆写即可实现检测效果
+
+代码清单：`widget.h`
+
+```cpp
+protected:
+    // 覆写按键点击事件
+    void keyPressEvent(QKeyEvent *event);
+```
+
+之后来到主文件 `widget.cpp`，直接覆写对应的时间即可
+
+```cpp
+// 覆写按键点击事件
+void Widget::keyPressEvent(QKeyEvent *event)
+{
+    // 检测按下alt和x键
+    if(event->modifiers()==Qt::AltModifier && event->key()==Qt::Key_X){
+        qDebug() << "press key alt m";
+    }else{
+        // 检测不到，就一直检测
+        QWidget::keyPressEvent(event);
+    }
+}
+```
+
+<br>
+
 #### eventFilter 按键检测
 
 eventFilter 可以实现让一个对象监听另一个对象的所有事件，我们只需要在对应的函数中对截取到的事件进行过滤后处理对应事件即可
@@ -586,5 +616,77 @@ void Widget::on_pushButton_clicked()
     qDebug() << "这是一条测试信息";
 }
 ```
+
+<br>
+
+### 打包发布
+
+#### release 单文件打包
+
+> 参考文献：https://blog.csdn.net/sasafa/article/details/126538432
+
+首先准备我们欲打包发布的项目
+
+默认情况下运行时发布的是 debug 类型的（包含冗余调试信息，文件大），我们需要切换到 release 类型！！！
+
+切换完毕后点击绿色运行按钮，此时即编译完成 release 文件
+
+按照下图步骤 1，切换至 release  
+构建文件生成位置根据下图 234 步即可查看
+
+![](./image/basic/b5.png)
+
+打开构建完毕的文件夹，找到构建完毕的 exe 文件  
+之后任意新建一个 model 文件夹，把该 exe 文件拷贝进去
+
+<br>
+
+之后在开始菜单里面搜索，找到 Qt 命令行，注意我这里使用的编译器是 MinGW，如果你用的是 MSVC 就要切换到对应的命令行！
+
+![](./image/basic/b6.png)
+
+使用 cd 指令，进入到 model 文件夹下，使用下方指令对其进行打包
+
+```sh
+windeployqt xxx.exe
+```
+
+打包完毕后双击对应的 exe 文件，发现可以正常运行，那么我们就进入下一步
+
+<br>
+
+这里我们需要使用到一个打包软件，叫做`Enigma Virtual Box`，它是免费的
+点击这里前往官网下载：https://enigmaprotector.com/en/downloads.html
+
+打开 `Enigma Virtual Box`  
+待封包的主程序，选择 model 文件夹下的 exe 文件  
+封包程序另存为，自己找一个顺眼的文件夹保存打包好的单文件
+
+![](./image/basic/b7.png)
+
+之后点击“文件选项”，勾选“压缩文件”，然后点击确定
+
+点击“添加”，务必选择“递归添加文件夹”，弹出窗口选择我们的 model 文件夹即可
+
+![](./image/basic/b8.png)
+
+最后点击右下角的 `执行封包` 稍稍等待一分钟，就可以生成我们打包好的单文件应用了
+
+该应用封装了所有 dll，移植到任何一台 windows 电脑都可以正常使用！
+
+<br>
+
+#### anaconda 冲突错误解决
+
+有些情况下，我们使用 windeployqt 打包时，会出现`unable find xxx`
+
+这是由于我们之前安装了 anaconda 环境，并配置了环境变量，命令行错误的寻址到了 anaconda 下并查找模块 windeployqt，自然是找不到的，所以必定报错
+
+目前没有很好的解决办法，只能修改环境变量
+
+打开环境变量，打开 path，找到我们设置的 anaconda 变量的位置，在该变量之前加上一个 0（目的就是为了使该变量失效，从而使命令行不要寻址到此位置！）  
+然后连点三个确定，才可正式应用变动
+
+重新打开 qt 命令行，cd 到 model 文件夹，此时再执行 windeployqt 就不会有问题了！
 
 <br>
