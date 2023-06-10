@@ -136,6 +136,82 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 
 <br>
 
+以下是一个标准的 pro 文件结构，对应的注释已经给出，大家可以按照下方展示的模板直接复制到自己的项目里面使用
+
+```py
+
+# QT内部库导入
+QT       += core gui
+
+# 兼容性处理，对QT4进行向下兼容
+greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
+
+# C++级别
+CONFIG += c++17
+# 开启编译警告
+CONFIG += warn_on
+# 开启头文件预编译
+CONFIG += PRECOMPILED_HEADER
+
+# 设置应用编译后输出exe文件名
+TARGET = Demo
+# 添加应用程序图标
+RC_ICONS = logo.ico
+
+# 对使用已过时的API提供编译警告
+DEFINES += QT_DEPRECATED_WARNINGS
+
+# 设置pri内应用编译后输出的文件夹
+# 注意，主项目编译后的目录依然是与项目平级的文件夹
+DESTDIR = bin
+
+
+SOURCES += \
+    main.cpp \
+    Widget.cpp
+
+HEADERS += \
+    Widget.h
+
+FORMS += \
+    Widget.ui
+
+# Default rules for deployment.
+qnx: target.path = /tmp/$${TARGET}/bin
+else: unix:!android: target.path = /opt/$${TARGET}/bin
+!isEmpty(target.path): INSTALLS += target
+```
+
+<br>
+
+#### 添加应用程序图标
+
+方法一：直接添加图标
+
+把图标文件 `logo.ico` 直接丢到项目目录下（和 pro 文件同级）  
+图标文件必须是 ico 类型的！！！
+
+在 pro 文件内添加这么一句话：  
+`RC_ICONS = logo.ico`
+
+保存 pro 文件后，重新构建即可
+
+<br>
+
+方法二：通过资源文件添加
+
+右键点击项目文件夹，点击添加新文件  
+选择 `概要->empty file`  
+新建的文件直接命名为 `logo.rc`
+
+在 logo.rc 文件夹内添加这一行语句  
+`IDI_ICON1 ICON DISCARDABLE "logo.ico"`
+
+回到 pro 文件，添加如下语句调用资源文件，然后保存+重新构建即可  
+`RC_FILE += logo.rc`
+
+<br>
+
 ### 信号与槽
 
 <br>
@@ -592,6 +668,10 @@ bool Widget::eventFilter(QObject *obj, QEvent *event)
     return QWidget::eventFilter(obj, event);
 }
 ```
+
+<br>
+
+### 文件处理
 
 <br>
 
