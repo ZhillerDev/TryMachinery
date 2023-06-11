@@ -11,7 +11,7 @@
 
 <br>
 
-### Quick 快速上手
+### Quick 预备知识
 
 <br>
 
@@ -218,5 +218,236 @@ Text {
 修改自定义组件 `DemoBtn.qml` 代码为
 
 ```c
+import QtQuick 2.12
 
+Item {
+    id: root
+    width: 116; height: 26
+
+    property alias text: label.text
+    signal clicked
+
+    Rectangle {
+        anchors.fill: parent
+        color: "lightsteelblue"
+        border.color: "slategrey"
+
+        Text {
+            id: label
+            anchors.centerIn: parent
+            text: "Start"
+        }
+        MouseArea {
+            anchors.fill: parent
+            onClicked: {
+                root.clicked()
+            }
+        }
+    }
+}
 ```
+
+<br>
+
+#### 定位元件
+
+`Column` 列定位
+在其中添加的组件都会按照列的方向竖直排列
+
+```c
+Column{
+    id: row
+    x: 12; y:12
+
+    // 每个组件之间垂直方向间隔
+    spacing: 8
+
+    // 所有组件（这里使用了我自己写的可复用组件，实际上就是一个带背景颜色的正方形）
+    SimpleRect{}
+    SimpleRect{color: "deepskyblue"}
+    SimpleRect{color: "lightgreen"}
+}
+```
+
+<br>
+
+`Row` 行定位  
+水平方向，不做过多解释
+
+```c
+Row{
+    id: row
+    x: 12; y:12
+    spacing: 8
+    SimpleRect{}
+    SimpleRect{color: "deepskyblue"}
+    SimpleRect{color: "lightgreen"}
+}
+```
+
+<br>
+
+Grid 栅格排列
+
+```c
+Grid{
+    id: row
+    x: 12; y:12
+    rows: 2
+    columns: 2
+    spacing: 8
+    anchors.centerIn: parent
+    SimpleRect{}
+    SimpleRect{color: "deepskyblue"}
+    SimpleRect{color: "lightgreen"}
+    SimpleRect{color: "orange"}
+}
+```
+
+Grid 搭配 Repeater 可以实现循环渲染元素的效果
+
+```c
+Grid{
+    id: row
+    x: 12; y:12
+    rows: 4
+    columns: 4
+    spacing: 8
+    anchors.centerIn: parent
+
+    // 将会渲染16个，4x4排列的，由正方形组成的矩阵
+    Repeater{
+        model: 16
+        SimpleRect{}
+    }
+}
+```
+
+<br>
+
+#### 布局项
+
+子组件通过对其父组件的各个锚点，实现精确定位  
+（这类似于 android 的约束布局，欠约束的子组件将会可以被改变位置）
+
+使用 `anchors` 锚点作为定位手段
+
+![](./image/qml-starter/qs3.png)
+
+<br>
+
+水平居中与垂直居中，并附带水平和垂直方向上的偏移
+
+```c
+Rectangle{
+    id: rect1
+    anchors.fill: parent
+
+    Rectangle{
+        id: rect2
+        width: 100; height: 100
+        color: "deepskyblue"
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.verticalCenter: parent.verticalCenter
+        anchors.verticalCenterOffset: 10
+        anchors.horizontalCenterOffset: -10
+    }
+}
+```
+
+指定方向锚点约束，并附加 margin
+
+```c
+Rectangle{
+    id: rect1
+    anchors.fill: parent
+
+    Rectangle{
+        id: rect2
+        width: 100; height: 100
+        color: "deepskyblue"
+        anchors.top: parent.top
+        anchors.topMargin: 10
+        anchors.left: parent.left
+        anchors.leftMargin: 50
+    }
+}
+```
+
+<br>
+
+#### 输入元素
+
+输入元素即文本输入框 `TextInput`
+
+首先看一下焦点定位与键盘切换焦点示例
+
+```c
+import QtQuick 2.5
+
+Rectangle {
+    width: 200
+    height: 80
+    color: "linen"
+
+    TextInput {
+        id: input1
+        x: 8; y: 8
+        width: 96; height: 20
+
+        // 是否获取焦点
+        focus: true
+        text: "Text Input 1"
+
+        // 点击键盘上的tab键后，焦点移动到哪一个组件上去
+        KeyNavigation.tab: input2
+    }
+
+    TextInput {
+        id: input2
+        x: 8; y: 36
+        width: 96; height: 20
+        text: "Text Input 2"
+        KeyNavigation.tab: input1
+    }
+}
+```
+
+<br>
+
+使用 keys 进行按键检测，是不是想到实现一个角色控制游戏了？
+
+```c
+import QtQuick 2.5
+
+DarkSquare {
+    width: 400; height: 200
+
+    GreenSquare {
+        id: square
+        x: 8; y: 8
+    }
+    focus: true
+    Keys.onLeftPressed: square.x -= 8
+    Keys.onRightPressed: square.x += 8
+    Keys.onUpPressed: square.y -= 8
+    Keys.onDownPressed: square.y += 8
+    Keys.onPressed: {
+        switch(event.key) {
+            case Qt.Key_Plus:
+                square.scale += 0.2
+                break;
+            case Qt.Key_Minus:
+                square.scale -= 0.2
+                break;
+        }
+
+    }
+}
+```
+
+<br>
+
+####
+
+### 流元素
