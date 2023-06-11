@@ -1,4 +1,4 @@
-## 前言
+### 前言
 
 基于如下环境
 
@@ -451,3 +451,314 @@ DarkSquare {
 ####
 
 ### 流元素
+
+<br>
+
+#### 动画
+
+在使用任何动画之前，必须要在 `main.qml` 内导入以下头文件  
+或者在任何需要调用动画的 qml 文件添加该头，否则会一直报错！
+
+- 若使用 QT5 的 QML，使用：`import QtQuick.Controls 1.4`
+- 若使用 QT6 的 QML，使用：`import QtQuick.Controls 2.0`
+
+添加完毕后，必须要重新构建整个项目！
+
+<br>
+
+> `rect` 点击后在固定时间内持续自旋后停止案例
+
+代码清单：`AnimationComp.qml`
+
+```c
+import QtQuick 2.0
+
+Item {
+    id: root
+    width: 100; height: 100
+
+    // 控制是否播放动画的属性
+    property bool isRunning: false
+
+    Rectangle{
+        id: rect
+        anchors.fill: parent
+        anchors.margins: 20
+        color: "deepskyblue"
+
+        // RotationAnimation控制旋转类型的动画
+        RotationAnimation on rotation{
+            to: 360 // 从当前位置到360
+            duration: 300 // 持续时间300ms
+            running: root.isRunning // 当前动画状态
+        }
+    }
+
+    // 设立一个按钮点击区域以便启动动画
+    MouseArea{
+        id: mouse
+        anchors.fill: parent
+        onClicked: root.isRunning = true
+    }
+}
+```
+
+在 main.qml 里面是这样的：
+
+```c
+import QtQuick 2.12
+import QtQuick.Window 2.12
+
+// 一定一定一定要记住导入这个头文件！！！
+import QtQuick.Controls 1.4
+
+
+Window {
+    width: 640
+    height: 480
+    visible: true
+    title: qsTr("Hello World")
+
+    // 调用自己编写的带动画的rect组件
+    AnimationComp{}
+}
+```
+
+<br>
+
+Rectangle 竖直方向移动动画  
+我们可以使用两种方式实现
+
+方法一：`Behavior` 监听位置变换
+
+```c
+Rectangle{
+    id:rect
+    width: 200; height: 200
+    color: "deepskyblue"
+
+    // 使用Behavior监听组件y轴位置
+    // 一旦y值变化，则启动动画过渡效果
+    Behavior on y{
+        // NumberAnimation数值动画过渡效果
+        NumberAnimation{
+            duration: 1000
+            easing.type: Easing.InOutQuad
+        }
+    }
+
+    MouseArea{
+        id:mouse
+        anchors.fill: parent
+
+        // 点击后修改y轴位置，触发对应Behavior
+        onClicked: rect.y = 200
+    }
+}
+```
+
+方法二：`NumberAnimation` 触发
+
+```c
+Rectangle{
+    id:rect
+    width: 200; height: 200
+    color: "deepskyblue"
+
+    // NumberAnimation数值类型动画过渡
+    NumberAnimation {
+        id:anim         // 设置动画id
+        target: rect    // 那个组件执行动画
+        property: "y"   // 欲监听变动的属性
+        to: 200         // 属性变化到哪个数值
+        duration: 1000  // 动画持续时间
+        easing.type: Easing.InOutQuad   // 过渡曲线
+    }
+
+    MouseArea{
+        id:mouse
+        anchors.fill: parent
+
+        // 使用start显式触发对应id的动画！
+        onClicked: anim.start()
+    }
+}
+```
+
+<br>
+
+#### 分组动画
+
+`ParallelAnimation` 非顺序分组动画  
+由该组件包裹的所有动画全部都同时进行，不按顺序
+
+```c
+Rectangle{
+    id:rect
+    width: 100; height: 100
+    color: "deepskyblue"
+
+    MouseArea{
+        id:mouse
+        anchors.fill: parent
+        onClicked: para.start() // 开启分组动画
+    }
+
+    ParallelAnimation{
+        id:para
+        NumberAnimation{
+            target: rect
+            properties: "y"
+            to: 100
+            duration: 1000
+            easing.type: Easing.Bezier
+        }
+        NumberAnimation{
+            target: rect
+            properties: "x"
+            to: 200
+            duration: 1000
+            easing.type: Easing.Bezier
+        }
+    }
+}
+```
+
+`SequentialAnimation` 按顺序分组动画  
+所有添加进去的动画都按照顺序依次执行
+
+代码不做演示，直接把上方代码中的 ParallelAnimation 改为 SequentialAnimation 即可
+
+<br>
+
+#### 状态与转换
+
+使用 states 进行状态管理，实现不同状态的切换
+
+```c
+import QtQuick 2.0
+
+Item {
+    id:root
+    width: 100; height: 100
+
+    // 起始状态
+    state: "open"
+
+    // 所有可能的状态
+    states: [
+        // open状态，颜色为灰色
+        State {
+            name: "open"
+            PropertyChanges {
+                target: rect
+                color:"lightgray"
+            }
+        },
+        // close状态，颜色为橙色
+        State {
+            name: "close"
+            PropertyChanges {
+                target: rect
+                color:"orange"
+            }
+        }
+    ]
+
+    Rectangle{
+        id:rect
+        anchors.fill: parent
+        color: "orange"
+
+        MouseArea{
+            id:mouse
+            anchors.fill: parent
+            // 鼠标点击切换状态
+            onClicked: root.state = (root.state=="open" ? "close" : "open")
+        }
+    }
+}
+```
+
+<br>
+
+直接切换 state 显得是否僵硬，我们需要通过 transitions 添加一些过渡效果
+
+直接把以下代码插入到上方代码中去
+
+```c
+// 设置过渡效果
+transitions: [
+    Transition {
+        // 表示过渡效果针对所有state切换过程
+        // 当然你也可以选择针对单次状态切换过程执行动画，比如from:"open"; to:"close"
+        from: "*"; to:"*"
+        // 一个标准的颜色切换过渡
+        ColorAnimation {
+            properties: "color"
+            duration: 2000
+            easing.type: Easing.Bezier
+        }
+    }
+]
+```
+
+此时完整的代码应该是这样的
+
+代码清单 `TransitionComp.qml`
+
+```c
+import QtQuick 2.0
+
+Item {
+    id:root
+    width: 100; height: 100
+
+    state: "open"
+    states: [
+        State {
+            name: "open"
+            PropertyChanges {
+                target: rect
+                color:"lightgray"
+            }
+        },
+        State {
+            name: "close"
+            PropertyChanges {
+                target: rect
+                color:"orange"
+            }
+        }
+    ]
+
+    transitions: [
+        Transition {
+            from: "*"; to:"*"
+            ColorAnimation {
+                properties: "color"
+                duration: 2000
+                easing.type: Easing.Bezier
+            }
+        }
+    ]
+
+    Rectangle{
+        id:rect
+        anchors.fill: parent
+        color: "orange"
+
+        MouseArea{
+            id:mouse
+            anchors.fill: parent
+            onClicked: root.state = (root.state=="open" ? "close" : "open")
+        }
+    }
+}
+```
+
+<br>
+
+### QuickControl
+
+<br>
