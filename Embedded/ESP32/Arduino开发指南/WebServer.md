@@ -26,7 +26,7 @@ https://github.com/me-no-dev/arduino-esp32fs-plugin
 
 依次点击 `工具->ESP Sketch Data Upload`
 
-![](./image/webserver/ws1.png)
+![](./image/webserver/ws2.png)
 
 由于我们是第一次使用 SPIFFS，需要进行初始化，弹出窗口点击 yes 即可
 
