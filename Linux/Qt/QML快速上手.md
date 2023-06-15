@@ -967,6 +967,16 @@ ApplicationWindow {
 
 <br>
 
+#### component 组件报错问题
+
+当我们在需要使用 Component 定义一个组件时，通常会发现编辑器报错 `Unknown component (M300)`
+
+解决方法很简单，点击编辑器菜单栏的 `工具->QML/JS->重置代码模型` 即可解决
+
+![](./image/qml-starter/qs6.png)
+
+<br>
+
 #### StackView
 
 > StackView 可以实现多页面的堆栈管理，类似于 android 中的 view
@@ -1297,6 +1307,40 @@ Column {
 
 <br>
 
+`ListModel` 里面还可以添加函数，后续通过 onclicked 进行调用
+
+```c
+ListModel {
+    id: actionModel
+
+    ListElement {
+        name: "Copenhagen"
+        // 定义一个函数方法
+        hello: function(value) { console.log(value + ": You clicked Copenhagen!"); }
+    }
+    ...
+}
+
+ListView {
+    ...
+}
+
+Component {
+    id: actionDelegate
+
+    Rectangle {
+        ...
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: hello(index); // 点击触发ListModel中属性对应的函数方法
+        }
+    }
+}
+```
+
+<br>
+
 使用委托也很方便，借助 model 可以实现渲染指定数量的组件
 
 ```c
@@ -1315,6 +1359,8 @@ Window {
         clip: true
         spacing: 5
 
+        // orientation: ListView.Horizontal 这样可以吧默认竖直状态改为水平状态
+
         model: 10 // 渲染100个子组件
         delegate: card // 欲被渲染的子组件
     }
@@ -1332,4 +1378,268 @@ Window {
 
 <br>
 
-#### 动态视图
+#### 焦点切换动画
+
+自定义高亮动画，实现点击 `小键盘上的上下箭头` 切换列表项焦点时的过渡效果
+
+highlight 属性可以定义高亮组件，高亮组件位于列表项组件的底层，我们可以通过设置高亮组件的动画来呈现切换的效果
+
+```c
+import QtQuick 2.12
+import QtQuick.Window 2.12
+
+Window {
+    width: 640
+    height: 480
+    visible: true
+    title: qsTr("Hello World")
+
+    ListView {
+        id: view
+        anchors.fill: parent
+        anchors.margins: 20
+        spacing: 4
+        clip: true
+
+        currentIndex: 0 // 初始焦点为第一个列表项
+
+        model: 100
+        delegate: numberDelegate
+
+        // 设置高亮组件
+        highlight: highlightComponent
+        // 关闭ListView自带的高亮切换动画，以便我们使用自定义的动画过渡效果
+        highlightFollowsCurrentItem: false
+        // 默认初始为焦点聚集状态
+        focus: true
+    }
+
+    // 高亮组件，位于列表组件的底层
+    Component {
+        id: highlightComponent
+
+        Item {
+            width: ListView.view.width
+            height: ListView.view.currentItem.height
+
+            y: ListView.view.currentItem.y
+
+            // 由于我们的列表是垂直状态，故检测y轴动作
+            // 先把上一个失焦高亮组件透明度变成0，然后把当前高亮组件变成1
+            Behavior on y {
+                SequentialAnimation {
+                    PropertyAnimation { target: highlightRectangle; property: "opacity"; to: 0; duration: 200 }
+                    NumberAnimation { duration: 1 }
+                    PropertyAnimation { target: highlightRectangle; property: "opacity"; to: 1; duration: 200 }
+                }
+            }
+
+            // 高亮组件底色使用一个长方形
+            Rectangle{
+                id:highlightRectangle
+                color: "deepskyblue"
+                anchors.fill: parent
+            }
+        }
+    }
+
+    // 列表组件，位于最上层
+    Component {
+        id: numberDelegate
+
+        Item {
+            width: 40
+            height: 40
+
+            Text {
+                anchors.centerIn: parent
+                font.pixelSize: 14
+                text: index
+            }
+        }
+    }
+}
+```
+
+<br>
+
+#### 网格视图
+
+```c
+GridView {
+    id: view
+    anchors.fill: parent
+    anchors.margins: 20
+
+    clip: true
+
+    model: 100
+
+    cellWidth: 45
+    cellHeight: 45
+
+    delegate: numberDelegate
+}
+
+Component {
+    id: numberDelegate
+
+    GreenBox {
+        width: 40
+        height: 40
+        text: index
+    }
+}
+```
+
+<br>
+
+#### 高级委托
+
+增删项目的动画处理
+
+代码实现内容：提供一个数据源 ListModel，网格视图选择该 model 进行渲染，提供增删列表项按钮，并添加增删的动画
+
+对应原理已经写到下面的代码里面去了，直接解释不太方便~
+
+```c
+import QtQuick 2.12
+import QtQuick.Window 2.12
+
+Window {
+    width: 640
+    height: 480
+    visible: true
+    title: qsTr("Hello World")
+
+    // 定义初始列表
+    // 渲染的列表项都从这里来
+    ListModel {
+        id: theModel
+        ListElement { number: 0 }
+        ListElement { number: 1 }
+        ListElement { number: 2 }
+        ListElement { number: 3 }
+        ListElement { number: 4 }
+        ListElement { number: 5 }
+        ListElement { number: 6 }
+        ListElement { number: 7 }
+        ListElement { number: 8 }
+        ListElement { number: 9 }
+    }
+
+    // 增加列表项的按钮
+    Rectangle {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: 20
+
+        height: 40
+
+        color: "#53d769"
+        border.color: Qt.lighter(color, 1.1)
+
+        Text {
+            anchors.centerIn: parent
+            text: "Add item!"
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: {
+                // 点击按钮后给列表theModel添加新项
+                theModel.append({"number": ++parent.count});
+            }
+        }
+
+        property int count: 9
+    }
+
+    // 网格视图
+    GridView {
+        anchors.fill: parent
+        anchors.margins: 20
+        anchors.bottomMargin: 80
+
+        clip: true
+
+        model: theModel // 渲染的model
+
+        cellWidth: 45
+        cellHeight: 45
+
+        delegate: numberDelegate // 委托
+    }
+
+    Component {
+        id: numberDelegate
+
+        Rectangle {
+            id: wrapper
+
+            width: 40
+            height: 40
+
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: "#f8306a" }
+                GradientStop { position: 1.0; color: "#fb5b40" }
+            }
+
+            Text {
+                anchors.centerIn: parent
+                font.pixelSize: 10
+                text: number
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                onClicked: {
+                    // 点击列表项后移除自身
+                    theModel.remove(index);
+                }
+            }
+
+            // 移除列表项动画
+            GridView.onRemove: SequentialAnimation {
+                PropertyAction { target: wrapper; property: "GridView.delayRemove"; value: true }
+                NumberAnimation { target: wrapper; property: "scale"; to: 0; duration: 250; easing.type: Easing.InOutQuad }
+                PropertyAction { target: wrapper; property: "GridView.delayRemove"; value: false }
+            }
+
+            // 新增列表项动画
+            GridView.onAdd: SequentialAnimation {
+                NumberAnimation { target: wrapper; property: "scale"; from: 0; to: 1; duration: 250; easing.type: Easing.InOutQuad }
+            }
+        }
+    }
+}
+```
+
+<br>
+
+#### ObjectModel
+
+`ObjectModel` 可管理多个组件，可直接使用 `listview` 进行渲染
+
+```c
+ObjectModel {
+    id: itemModel
+
+    Rectangle { height: 60; width: 80; color: "#157efb" }
+    Rectangle { height: 20; width: 300; color: "#53d769"
+        Text { anchors.centerIn: parent; color: "black"; text: "Hello QML" }
+    }
+    Rectangle { height: 40; width: 40; radius: 10; color: "#fc1a1c" }
+}
+
+ListView {
+    anchors.fill: parent
+    anchors.margins: 10
+    spacing: 5
+
+    model: itemModel
+}
+```
+
+<br>
