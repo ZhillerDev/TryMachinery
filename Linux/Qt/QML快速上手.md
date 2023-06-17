@@ -1643,3 +1643,58 @@ ListView {
 ```
 
 <br>
+
+### 音视频操作
+
+> 特别注意！再进行音视频开发前，最好先安装一个万能解码器，对于部分电脑（比如我的），未安装解码器时，即便代码无误且可完美运行，但是依旧无法播放音视频
+
+安装 `LAV Filters` 解码器  
+[下载地址](http://www.downza.cn/soft/253007.html)
+
+解码器安装位置任选，安装时关联所有的音视频格式（也就是安装默认安装即可）
+
+不需要做特殊处理，之后在 QT 中调用视频时就会自动执行解码了
+
+<br>
+
+#### MediaPlayer
+
+创建新的项目，随便准备一个 mp4 文件，丢到项目根目录下，这里视频文件为 `demo.mp4`
+
+直接在 main.qml 写入以下代码
+
+```c
+import QtQuick 2.12
+import QtQuick.Window 2.12
+import QtMultimedia 5.0
+
+Window {
+    width: 640
+    height: 480
+    visible: true
+    title: qsTr("Hello World")
+
+    // 媒体播放器对象
+    MediaPlayer{
+        id:player
+        // 绝对路径，格式： file:/[绝对路径名]
+        // 路径全部使用正斜杠
+        source:"file:/E:/qml_camera/demo.mp4"
+        // 自动播放视频
+        autoPlay: true
+    }
+
+    // 视频输出对象
+    // 这个组件才是真正输出给我们看的
+    VideoOutput{
+        anchors.fill: parent
+        source: player // 设置视频源为对应的mediaplayer
+    }
+}
+```
+
+> 点击运行，即可看到视频已经自动播放出来啦
+
+<br>
+
+####
