@@ -99,6 +99,19 @@ DAC2 (GPIO26)
 
 #### RTC
 
+用于睡眠唤醒以及时钟操作
+
+<br>
+
+#### IIC
+
+> 在某些板子上，SDA 线也可能标记为 SDI，而 SCL 线标记为 SCK。
+
+ESP32 自带两个 I2C 接口
+
+GPIO 21 (SDA)  
+GPIO 22 (SCL)
+
 <br>
 
 #### PWM 脉冲宽度调制
@@ -145,4 +158,107 @@ void loop(){
 
 <br>
 
-### 定时器
+### IIC
+
+> 在此之前需要下载六个重要的外部库到 arduino 里面才可以
+
+Adafruit GFX Library  
+Adafruit SSD1306  
+Adafruit Sensor Calibration  
+Adafruit Sensor Lab  
+Adafruit Unified Sensor
+
+<br>
+
+#### 检测处于 IIC 线路上的设备
+
+回顾一下两个 I2C 输出引脚：`GPIO 21 (SDA)  ；GPIO 22 (SCL)`
+
+如果要是有 IIC，就必须导入头文件 `Wire.h`
+
+```c
+#include <Wire.h>
+void setup() {
+  Wire.begin(); // 初始化I2C总线
+  Serial.begin(115200); // 初始化串口通信，波特率为115200
+  Serial.println("\nI2C扫描程序"); // 输出提示信息
+}
+
+void loop() {
+  byte error, address; // 定义错误码和设备地址变量
+  int nDevices; // 定义设备数量变量
+  Serial.println("扫描中..."); // 输出扫描提示信息
+  nDevices = 0; // 设备数量初始化为0
+
+  for(address = 1; address < 127; address++ ) { // 循环扫描从1到127的设备地址
+    Wire.beginTransmission(address); // 开始传输数据到设备地址
+    error = Wire.endTransmission(); // 结束传输并获取错误码
+    if (error == 0) { // 如果错误码为0，表示找到了设备
+      Serial.print("在地址0x"); // 输出设备地址提示信息
+      if (address<16) { // 如果设备地址小于16，前面补0
+        Serial.print("0");
+      }
+      Serial.println(address,HEX); // 输出设备地址
+      nDevices++; // 设备数量加1
+    }
+    else if (error==4) { // 如果错误码为4，表示设备没有响应
+      Serial.print("在地址0x"); // 输出设备地址提示信息
+      if (address<16) { // 如果设备地址小于16，前面补0
+        Serial.print("0");
+      }
+      Serial.println(address,HEX); // 输出设备地址
+      Serial.println("发生未知错误"); // 输出错误信息
+    }
+  }
+  if (nDevices == 0) { // 如果设备数量为0，表示没有找到设备
+    Serial.println("没有找到I2C设备\n"); // 输出提示信息
+  }
+  else { // 否则表示找到了设备
+    Serial.println("扫描完成\n"); // 输出提示信息
+  }
+  delay(5000); // 延时5秒
+}
+```
+
+<br>
+
+#### 最简 SSD1306 屏显
+
+![](./image/basic/ab2.png)
+
+```c
+#include <Wire.h> // 引用 Wire 库，用于 I2C 通讯
+#include <Adafruit_GFX.h> // 引用 Adafruit_GFX 库，用于 OLED 显示屏图形操作
+#include <Adafruit_SSD1306.h> // 引用 Adafruit_SSD1306 库，用于 OLED 显示屏驱动
+#include <Adafruit_Sensor.h> // 引用 Adafruit_Sensor 库，用于传感器操作
+
+#define SCREEN_WIDTH 128 // OLED 显示屏宽度，以像素为单位
+#define SCREEN_HEIGHT 64 // OLED 显示屏高度，以像素为单位
+
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1); // 创建 OLED 显示屏对象
+
+void setup() {
+  Serial.begin(115200); // 初始化串口通讯，波特率为 115200
+
+  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // 初始化 OLED 显示屏
+    Serial.println(F("SSD1306 allocation failed")); // 如果初始化失败，打印错误信息
+    for(;;); // 程序进入死循环
+  }
+
+  delay(2000); // 延时 2 秒
+  display.clearDisplay(); // 清空 OLED 显示屏
+  display.setTextColor(WHITE); // 设置 OLED 显示屏文本颜色为白色
+}
+
+void loop() {
+  display.clearDisplay(); // 清空 OLED 显示屏
+
+  display.setTextSize(2); // 设置文本字体大小为 2
+  display.setCursor(0,0); // 设置文本显示位置为 (0, 0)
+  display.print("Hello!"); // 显示 "Hello!" 文本
+
+  display.display(); // 将图像显示在 OLED 显示屏上
+
+  delay(1000); // 延时 1 秒
+}
+```
