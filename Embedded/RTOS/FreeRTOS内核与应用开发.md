@@ -1,6 +1,8 @@
-### 新建 FreeRTOS 工程
+## FreeRTOS 内核分析
 
 <br>
+
+### 新建 FreeRTOS 工程
 
 #### axf 报错
 
@@ -260,11 +262,32 @@ xTicksToDelay 表示延时时间，时间按照周期递减，此递减周期时
 
 根据前导零计算
 
-例如，有如下 uxTopReadyPriority 的值（000011）；  
+例如，有如下 `uxTopReadyPriority` 的值（000011）；  
 0 表示对应任务不参与优先级计算，1 表示参与运算；  
 优先级依然按照从小到大优先级依次增大的原则；
 
 可见 uxTopReadyPriority 有四个前导零，后面的两位才参与优先级计算，且最后一位的优先级达到最高  
 空闲任务优先级为 0，但是不出现在 uxTopReadyPriority 里面，所以首位 0 并不代表空闲任务！
+
+<br>
+
+任务切换函数 `vTaskSwitchContext()`  
+他可以寻找到优先级最高的就绪任务 TCB 并将其更新到 pxCurrentTCB
+
+<br>
+
+### 任务延时列表
+
+#### xTicksToDelay
+
+这是于 TCB 中内置的延时变量
+
+最简单的 xTicksToDelay 任务挂起到唤醒全流程  
+此方法由于需要每次时基中断都必须全部扫描一次，很费时，后续使用延时列表进行改进
+
+1. 初始化 xTicksToDelay 并设置需要延时时间
+2. 挂起任务
+3. 清空任务的优先级位图表中的对应位
+4. 每次时基中断就扫描一次 xTicksToDelay，若大于 0 则递减，若等于 0 表示任务就绪，开始切换任务
 
 <br>
