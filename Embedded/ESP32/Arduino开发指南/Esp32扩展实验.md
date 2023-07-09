@@ -261,3 +261,11 @@ void LCD_Setting(int status){
 此案例采用板卡默认自带小灯（GPIO2）实现，不需要额外接电路
 
 <br>
+
+### OLED 0.96
+
+> 硬件：0.96 寸 OLED 显示屏，7 帧引脚，支持 IIC\SPI
+
+<br>
+
+#### 环境配置
