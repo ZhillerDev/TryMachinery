@@ -190,3 +190,96 @@ signals:
 <br>
 
 #### 配置文件
+
+<br>
+
+### 事件操作
+
+<br>
+
+#### 右键弹出菜单
+
+> 接下来将实现这个功能：右键点击主窗口 MainWindow 后，弹出一个关闭软件的菜单
+
+首先我们需要在头文件内定义对应的事件以及弹出的目录和鼠标动作这三样关键要素
+
+代码清单：`MainWindow.h`
+
+```cpp
+#ifndef MAINWINDOW_H
+#define MAINWINDOW_H
+
+#include <QLabel>
+#include <QMainWindow>
+
+QT_BEGIN_NAMESPACE
+namespace Ui {
+class MainWindow;
+}
+QT_END_NAMESPACE
+
+class MainWindow : public QMainWindow {
+    Q_OBJECT
+
+   public:
+    MainWindow(QWidget* parent = nullptr);
+    ~MainWindow();
+
+   protected:
+   // 重写QContextMenuEvent鼠标右键点击事件，实现右键弹出菜单栏
+    void contextMenuEvent(QContextMenuEvent* event);
+
+   private:
+    Ui::MainWindow* ui;
+
+    QMenu* mExitMenu;   // 右键退出的菜单
+    QAction* mExitAct;  // 退出的行为
+};
+#endif  // MAINWINDOW_H
+```
+
+<br>
+
+```cpp
+#include "mainwindow.h"
+
+#include <QContextMenuEvent>
+#include <QDebug>
+#include <QMenu>
+
+#include "ui_mainwindow.h"
+
+MainWindow::MainWindow(QWidget* parent)
+    : QMainWindow(parent), ui(new Ui::MainWindow) {
+    ui->setupUi(this);
+
+    //设置窗口属性
+    setWindowFlag(Qt::FramelessWindowHint);  // 无边框
+    setFixedSize(width(), height());         // 固定窗口大小
+
+    // 右键菜单：退出程序
+    mExitMenu = new QMenu(this);
+    mExitAct = new QAction();
+    mExitAct->setText(tr("退出"));
+    mExitAct->setIcon(QIcon(":/res/close.png"));
+    mExitMenu->addAction(mExitAct);
+
+    // 链接对应信号与槽
+    // mExitAct 表示由鼠标点击事件触发
+    // &QAction::triggered 表示时间触发的方式
+    // this 处理触发的对象我们就选择当前mainwindow
+    // 最后的一个lambda函数，使用qApp直接退出该软件
+    connect(mExitAct, &QAction::triggered, this, [=]() { qApp->exit(0); });
+}
+
+MainWindow::~MainWindow() { delete ui; }
+
+// 重写的contextMenuEvent方法
+void MainWindow::contextMenuEvent(QContextMenuEvent* event) {
+    // 在鼠标当前位置启动菜单栏
+    mExitMenu->exec(QCursor::pos());
+    // 允许鼠标右键点击事件
+    event->accept();
+}
+
+```
