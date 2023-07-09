@@ -154,3 +154,49 @@ Widget::~Widget()
 <br>
 
 ### 典型例图
+
+#### 折线图
+
+此函数返回一个 `QChartView` 对象，可用于直接插入到对应的 layout 组件内部后然后显示出来
+
+向该函数传入一个数组，数组就作为折线图上的点绘制  
+仅支持一条折线，多折线将在后面陆续给出
+
+```c
+QChartView* ChartsUtil::view(int arr[]){
+    QChart *chart = new QChart();
+    chart->setTitle("重要参数变化折线"); // 设置折线图标题
+
+    QLineSeries *series = new QLineSeries;
+    series->setName("温度"); // 设置折线图线条的名称为“温度”
+    for(int i=1;i<11;i++){ // 根据传入的数组创建折线图的数据点
+        series->append(i,arr[i-1]);
+    }
+    chart->addSeries(series);
+
+    QValueAxis *axisX = new QValueAxis; // 创建 X 轴
+    axisX->setRange(0, 10); // 设置 X 轴范围
+    axisX->setTitleText("次数"); // 设置 X 轴标题
+    QValueAxis *axisY = new QValueAxis; // 创建 Y 轴
+    axisY->setRange(-30, 50); // 设置 Y 轴范围
+    axisY->setTitleText("温度"); // 设置 Y 轴标题
+
+    chart->addAxis(axisX, Qt::AlignBottom); // 将 X 轴添加到折线图中
+    chart->addAxis(axisY, Qt::AlignLeft); // 将 Y 轴添加到折线图中
+
+    series->attachAxis(axisX); // 将数据线条和 X 轴关联
+    series->attachAxis(axisY); // 将数据线条和 Y 轴关联
+
+    QLegend *legend = chart->legend(); // 创建图例
+    legend->setVisible(true); // 显示图例
+    legend->setAlignment(Qt::AlignTop); // 设置图例位置为顶部
+    legend->setFont(QFont("Arial", 8)); // 设置图例字体为 Arial，字号为 8
+
+    QChartView *chartView = new QChartView(chart); // 创建 QChartView 类型的指针
+    chartView->setRenderHint(QPainter::Antialiasing); // 设置抗锯齿
+
+    return chartView; // 返回 QChartView 类型的指针
+}
+```
+
+<br>
