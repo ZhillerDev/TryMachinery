@@ -283,3 +283,77 @@ void MainWindow::contextMenuEvent(QContextMenuEvent* event) {
 }
 
 ```
+
+#### 按住窗口拖拽
+
+实现鼠标左键按住窗口后，移动鼠标拖拽窗口四处移动
+
+首先需要在头文件内定义两个之后要重写的事件  
+`mousePressEvent` 和 `mouseMoveEvent`
+
+代码清单：`MainWindow.h`
+
+```cpp
+#ifndef MAINWINDOW_H
+#define MAINWINDOW_H
+
+#include <QMainWindow>
+#include <QContextMenuEvent>
+#include <QMouseEvent>
+#include <QMenu>
+
+
+QT_BEGIN_NAMESPACE
+namespace Ui { class MainWindow; }
+QT_END_NAMESPACE
+
+class MainWindow : public QMainWindow
+{
+    Q_OBJECT
+
+public:
+    MainWindow(QWidget *parent = nullptr);
+    ~MainWindow();
+
+private:
+    Ui::MainWindow *ui;
+
+protected:
+    // 重写鼠标按下事件
+    // 重写鼠标移动事件
+    void mousePressEvent(QMouseEvent *evt);
+    void mouseMoveEvent(QMouseEvent *evt);
+
+private:
+    // 在这里配置偏移值，以确保移动窗口时位置正确
+    QPoint mOffset;
+};
+#endif // MAINWINDOW_H
+
+```
+
+<br>
+
+之后就仅需我们在 cpp 里实现这两个事件函数即可
+
+由于版本较新的缘故，目前官方推荐使用 globalPosition 获取当前鼠标全局位置，之后才使用 toPoint 转换为对于坐标点
+
+代码清单：`MainWindow.cpp`
+
+```cpp
+// 鼠标按下的一刻，获取偏移值offset
+// 代码计算出鼠标按下时窗口左上角的坐标与鼠标按下时鼠标指针的位置之间的偏移量，并将其存储在mOffset变量中
+void MainWindow::mousePressEvent(QMouseEvent *evt)
+{
+    // globalPosition()返回当前鼠标指针的全局位置
+    mOffset = evt->globalPosition().toPoint() - this->pos();
+}
+
+// 代码计算出当前鼠标指针的全局位置与偏移量之间的差值，并将窗口的位置设置为该值。这会导致窗口跟随鼠标移动
+void MainWindow::mouseMoveEvent(QMouseEvent *evt)
+{
+    this->move(evt->globalPosition().toPoint()-mOffset);
+}
+```
+
+<br>

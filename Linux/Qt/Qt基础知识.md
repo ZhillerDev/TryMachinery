@@ -212,6 +212,216 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 
 <br>
 
+### 元对象系统
+
+<br>
+
+#### 基本概念
+
+QObject 是所有使用元对象系统的类的基类
+
+必须要在一个类的开头写下 Q_OBJECT 才可以使用元对象系统的特性
+
+在执行 `auto moc` 的过程时，当且仅当发现了 Q_OBJECT 的存在，才会为其生成对应的 cpp 文件
+
+<br>
+
+其他几个重要的对于元对象的概念：
+
+1. 类型信息：使用 QObject 中的 inherits 函数可以判断继承关系
+2. 动态翻译：使用 tr()返回一个字符串的翻译版本
+3. 对象数：可以对 QObject 对象使用 parent()获取对象数中的父内容，对于字内容也是如法炮制
+4. 属性系统：可以使用 Q_PROPERTY 定义属性
+
+<br>
+
+QMetaObject 元对象类  
+包含对类信息、方法、属性的描述
+
+同理，相对于 cpp 中的 dynamic_cast 类型转换，对于的有 qobject_cast 元对象类型转换  
+`QPushButton *btn = qobject_cast<QPushButton*>(b)`
+
+<br>
+
+属性设置
+
+可以在代码初始化函数里面配置对应对象的自定义属性
+
+```cpp
+#include "Widget.h"
+#include "ui_Widget.h"
+
+Widget::Widget(QWidget *parent)
+    : QWidget(parent)
+    , ui(new Ui::Widget)
+{
+    ui->setupUi(this);
+
+    // 配置一个按钮，让该按钮转换成qobject对象
+    QPushButton *button = new QPushButton;
+    QObject *obj = button;
+    // 直接向obj添加属性
+    obj->setProperty("enable",true);
+    // 从obj中拿取对应属性，直接输入我们之前插入的属性的key，自然就会得到对应的value
+    bool isEnable = obj->property("enable").toBool();
+    qDebug() << isEnable ;
+}
+
+Widget::~Widget()
+{
+    delete ui;
+}
+
+```
+
+<br>
+
+### 容器类与基本数据结构
+
+#### QList
+
+QList 是最常见且使用率最高的 QT 容器类，使用泛型来设置其可接受的元素的类型
+
+下面展示了如何实例化一个容器类 QList 并且在里面插入新的数据  
+插入数据有三种方式，如下所示
+
+```cpp
+Widget::Widget(QWidget *parent)
+    : QWidget(parent)
+    , ui(new Ui::Widget)
+{
+    ui->setupUi(this);
+
+    // 创建一个接收string类型元素的容器qlist
+    QList<QString> list;
+    // 插入新数据以及修改指定索引数据的方式
+    list<<"shit"<<"fuck";
+    list.append("123");
+    list[0]="ohmygod";
+    qDebug()<<list;
+}
+```
+
+<br>
+
+#### QMap
+
+QMap 作为一个关联容器而存在
+
+对应使用映射的方式来存储数据，具体数据存储流程看下面这一串代码
+
+```cpp
+Widget::Widget(QWidget *parent)
+    : QWidget(parent)
+    , ui(new Ui::Widget)
+{
+    ui->setupUi(this);
+
+    // 获得qmap对象
+    QMap<QString,quint8> map;
+    // 向map里面插入两个键值对
+    map["age"]=123;
+    map["score"]=219;
+
+    // 可以直接使用方括号取出指定键处的数值
+    // value使用后结果和方括号完全一致
+    // 如果当前键不存在，那么则使用value第二个参数返回值
+    qDebug() << map["age"] << map.value("score") << map.value("time",100);
+}
+```
+
+<br>
+
+#### QVarient
+
+QVariant 可接受任意类型的数据并存储起来，类似于 CPP 中的 auto 修饰符
+
+由于 QVariant 仅支持少量的常用的 toT 方法，故想要将 QVariant 类型转换为对于类型数据就必须使用`value<T>`这样
+
+```cpp
+void varientTest(){
+    // QVariant定义一个变量v，存储数值100
+    QVariant v(100);
+    // 给出的两种转换成对应数据类型的方法
+    QString s1 = v.toString();
+    QString s2 = v.value<QString>();
+    // 将v设置为指定变量
+    v.setValue(s2);
+
+    // 对于少部分不常见的数据类型，必须要对QVariant使用value<T>来解决！！！
+    qint64 i1 = 10293;
+    QVariant v2 = i1;
+    qint64 i2 = v2.value<qint64>();
+}
+```
+
+<br>
+
+#### QRandomGenerator
+
+`QRandomGenerator` 是一个内置的随机数生成器
+
+`QRandomGenerator::securelySeeded` 方法可以获取一个安全的种子生成器，足以确保生成的任何种子不会被轻易破解
+
+```cpp
+// 定义了一个名为 randomSeed 的函数，返回值为 void
+void randomSeed(){
+    // 创建一个新的 QRandomGenerator 对象 r1，并将其种子设置为当前时间的毫秒数
+    QRandomGenerator *r1 = new QRandomGenerator(QDateTime::currentMSecsSinceEpoch());
+    // 创建一个静态 QRandomGenerator 对象 r2，并使用 secure 随机数生成器进行种子初始化
+    QRandomGenerator r2 = QRandomGenerator::securelySeeded();
+    // 直接构造函数初始化
+    QRandomGenerator r3(QDateTime::currentSecsSinceEpoch());
+    // 使用 r1 生成一个随机数并在控制台输出
+    qDebug() << r1->generate();
+    // 使用 r2 生成一个随机数并在控制台输出
+    qDebug() << r2.generate();
+}
+```
+
+当然，你也可以使用此类直接把一个数组内填充满随机数
+
+```cpp
+// 定义了一个名为 arr 的 quint32 类型的数组，长度为 10
+quint32 arr[10];
+// 使用 QRandomGenerator::global() 填充 arr 数组
+QRandomGenerator::global()->fillRange(arr);
+
+// 创建一个长度为 12 的 QList<quint32> 对象 list
+QList<quint32> list;
+list.resize(12);
+// 使用 QRandomGenerator::global() 填充 list 数组
+QRandomGenerator::global()->fillRange(list.data(), list.size());
+
+// 在控制台输出 arr 和 list 的内容
+qDebug() << arr << list;
+```
+
+或者你可以生成指定范围的随机数
+
+```cpp
+qDebug() << QRandomGenerator::global()->bounded(100);
+```
+
+<br>
+
+#### QTimer 定时器
+
+最简单的定时器可以根据下面的固定格式套用
+
+```cpp
+// 定义一个定时器
+QTimer *timer = new QTimer(this);
+// 链接槽函数，&QTimer::timeout表示定时器到时的信号
+connect(timer,&QTimer::timeout,this,[=](){
+    qDebug() << "timer!";
+});
+// 启动定时器
+timer->start(1000);
+```
+
+<br>
+
 ### 信号与槽
 
 <br>
