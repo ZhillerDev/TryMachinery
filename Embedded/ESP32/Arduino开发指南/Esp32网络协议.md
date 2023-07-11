@@ -205,6 +205,137 @@ void loop(){
 
 <br>
 
+### WIFI
+
+#### UDP 通信
+
+> 再开始测试之前，请使用手机打开一个热点，并把电脑连接到手机热点上，这样子在后续测试中 ESP32 和电脑就会在同一个局域网（手机热点可以使用路由器代替）
+
+新建任意文件，填入以下代码
+
+`ssid` 和 `password` 即为我们热点的名称和密码
+
+`remote_IP` 是电脑的局域网地址，可以在电脑上使用 ipconfig 进行查看  
+`remoteUdpPort` 这是对应的 UDP 端口，可以随意设置！
+
+```c
+#include <WiFi.h>
+
+const char *ssid = "zhiller";
+const char *password = "pp12345678";
+
+WiFiUDP Udp;
+IPAddress remote_IP(192, 168, 43, 191);// 自定义远程监听 IP 地址
+unsigned int remoteUdpPort = 6060;  // 自定义远程监听端口
+int cnt = 0; //测试数据
+
+void setup()
+{
+  Serial.begin(115200);
+  delay(100);
+  WiFi.mode(WIFI_STA);
+  WiFi.setSleep(false); //关闭STA模式下wifi休眠，提高响应速度
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    delay(200);
+    Serial.print(".");
+  }
+  Serial.print("Connected, IP Address: ");
+  Serial.println(WiFi.localIP());
+}
+
+void loop()
+{
+  Udp.beginPacket(remote_IP, remoteUdpPort);//配置远端ip地址和端口
+  String str_cnt(cnt);
+  Udp.print(str_cnt);//把数据写入发送缓冲区
+  Udp.endPacket();//发送数据
+  cnt++;
+  delay(500);
+}
+```
+
+<br>
+
+首先打开串口监视器，然后开始上传代码
+
+从串口监视器中可以读取 ESP32 在当前局域网内的 IP 地址
+
+使用 NetAssist 软件
+
+- 协议类型选择 UDP
+- 本地主机地址选择当前电脑的局域网 IP，这里是 `192.168.43.191`
+- 端口选择我们设置的 UDP 端口，这里是 `6060`
+
+你可以遵照下图配置  
+打开串口后就可见 ESP32 传递过来的数据了
+
+![](./image/network/nk2.png)
+
+<br>
+
+**UDP 接收数据**
+
+如果要接收 UDP 数据，则可以使用如下代码
+
+首先于文件开头定义 char 类型缓冲区变量 `buff` ，大小为 255  
+之后使用 `parsePacket` 获取上位机传递过来的数据长度
+
+```c
+#include <WiFi.h>
+
+const char *ssid = "zhiller";
+const char *password = "pp12345678";
+
+WiFiUDP Udp;
+IPAddress remote_IP(192, 168, 43, 191);// 自定义远程监 IP 地址
+unsigned int remoteUdpPort = 6060;  // 自定义远程监听端口
+int cnt = 0; //测试数据
+
+// 定义缓冲区
+char buff[255];
+
+void setup()
+{
+  Serial.begin(115200);
+  delay(100);
+  WiFi.mode(WIFI_STA);
+  WiFi.setSleep(false); //关闭STA模式下wifi休眠，提高响应速度
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    delay(200);
+    Serial.print(".");
+  }
+  Serial.print("Connected, IP Address: ");
+  Serial.println(WiFi.localIP());
+}
+
+void loop()
+{
+  Udp.beginPacket(remote_IP, remoteUdpPort);//配置远端ip地址和端口
+
+  // 获取上位机传递过来的数据长度
+  int data_len = Udp.parsePacket();
+  // 如果长度非0，表示数据存在且有效
+  if(data_len){
+    // 读取长度为255字节的数据并将他们保存到缓冲区buff里面
+    int len = Udp.read(buff,255);
+    // 由于长度不可能总是255，对于多出来的乱码部分采用截断处理
+    if(len>0) buff[len]=0;
+    // 把获取的数据打印到串口
+    Serial.println(buff);
+  }
+
+  delay(500);
+}
+```
+
+<br>
+
+<br>
+
 ### LoRa
 
 <br>
