@@ -559,6 +559,8 @@ void MainWindow::on_pushButton_clicked()
 
 ### 对话框
 
+#### 标准对话框
+
 目前的对话框主要有以下几大类
 
 - 文件对话框( QFile Dialog)
@@ -647,6 +649,66 @@ void Widget::on_processBtn_clicked()
     QProgressDialog x;
             x.setValue(88);
             x.exec();
+}
+```
+
+<br>
+
+#### 标准可输入对话框
+
+`QInputDialog::getText` 构建一个包括一个输入框的对话框，他接受如下六个参数
+
+1. 父对象
+2. 标题
+3. 内容
+4. 输入模式
+5. 输入框默认文本
+6. 是否成功输入标识
+
+```cpp
+void Widget::on_pushButton_clicked()
+{
+    // 当按钮点击时显示输入对话框获取名字
+
+    QLineEdit::EchoMode mode = QLineEdit::Normal;  // 设置输入模式为普通文本
+    bool ok;  // 是否有效标志
+    QString str;
+    str = QInputDialog::getText(this,"获取名字",
+        "输入文本以便获取名字",mode,"",&ok);
+
+    //检查用户是否点击确定且输入的名字不为空
+    if(ok && !str.isEmpty()){
+        QMessageBox::information(this,"提示",
+            str,
+            QMessageBox::Cancel); // 将输入的名字显示在消息框中
+    }
+}
+```
+
+> 相对应的，如果你想要接收对应类型的内容，可以使用 `getInt` 或者 `getDouble` 等等
+
+<br>
+
+#### 客制化消息框
+
+需求：定义一个消息框，它是 information 类型的，包含一个 ok 和一个 cancel 按钮，点击 ok 后 qdebug 输出 123，点击 cancel 后 qdebug 输出 456
+
+```cpp
+void Widget::on_pushButton_clicked()
+{
+    QMessageBox *msgBox = new QMessageBox(this);
+    msgBox->setWindowTitle("信息提示");
+    msgBox->setIcon(QMessageBox::Information);
+    msgBox->setText("这是一条信息提示");
+    msgBox->setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
+
+    connect(msgBox->button(QMessageBox::Ok), &QPushButton::clicked,
+            [=]() { qDebug() << "123"; });
+
+    connect(msgBox->button(QMessageBox::Cancel), &QPushButton::clicked,
+            [=]() { qDebug() << "456"; });
+
+    msgBox->exec();
 }
 ```
 
@@ -880,6 +942,77 @@ bool Widget::eventFilter(QObject *obj, QEvent *event)
         }
     }
     return QWidget::eventFilter(obj, event);
+}
+```
+
+<br>
+
+#### 拖动拖放事件
+
+快速覆写虚函数的操作方式  
+进入头文件 h，右键点击 class 名称，然后选择 重构->insert virtue void base classes  
+选择我们需要覆写的事件处理方法  
+点击确认后，QT 自动为我们插入了以下三个事件处理函数
+
+```cpp
+protected:
+    // 窗口尺寸变化事件
+    virtual void resizeEvent(QResizeEvent *event);
+    // 拖动进入事件（即外部文件拖动首次进入作用域内）
+    virtual void dragEnterEvent(QDragEnterEvent *event);
+    //
+    virtual void dropEvent(QDropEvent *event);
+```
+
+<br>
+
+对应的三个实现可以这样写
+
+这里用到了 MIME 获取文件的属性，并使用 QFile 打开文件然后显示  
+注意 dragenter 和 drop 两个事件的触发时机与使用时机
+
+```cpp
+void Widget::resizeEvent(QResizeEvent *event)
+{
+    // 窗口大小变化时,重新布局控件
+
+    QSize sz = ui->plainTextEdit->size();
+    ui->plainTextEdit->move(5,5);         // 文本编辑器上移5左移5
+    ui->label->move(5,sz.height()+10);  // 图片标签下移文本编辑器高度+10, 左移5
+    ui->plainTextEdit->resize(this->width()-10,sz.height()); // 调整文本编辑器大小
+    ui->label->resize(this->width()-10,this->height()-sz.height()-20); // 调整图片标签大小
+    event->accept();    // 接受事件
+}
+
+void Widget::dragEnterEvent(QDragEnterEvent *event)
+{
+    // 拖入事件,判断是否支持JPG图片
+
+    ui->plainTextEdit->clear();
+    ui->plainTextEdit->appendPlainText("opened");
+    if(event->mimeData()->hasUrls()){
+        QString filename = event->mimeData()->urls().at(0).fileName();
+        QFileInfo info(filename);
+        QString ex=info.suffix().toUpper();
+        if(ex=="JPG"){
+            event->acceptProposedAction();
+        }else{
+            event->ignore();
+        }
+    }else{
+        event->ignore();
+    }
+}
+
+void Widget::dropEvent(QDropEvent *event)
+{
+    // 放入事件,显示JPG图片
+
+   QString filename = event->mimeData()->urls().at(0).path();
+   filename=filename.right(filename.length()-1);
+   QPixmap pic(filename);
+   ui->label->setPixmap(pic);
+   event->accept();
 }
 ```
 
