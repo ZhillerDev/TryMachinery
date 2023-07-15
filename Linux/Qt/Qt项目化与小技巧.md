@@ -357,3 +357,138 @@ void MainWindow::mouseMoveEvent(QMouseEvent *evt)
 ```
 
 <br>
+
+### Widget
+
+<br>
+
+#### 起始页实现
+
+> 在某些特殊场景下，我们需要设置一个起始页，比如等待用户输入个人信息并且登陆过后才可以进入主界面，否则直接退出软件
+
+利用 `QDialog` 类构建窗口，即可实现阻塞效果（即必须等待当前 QDialog 执行完毕或者说销毁后，才可以执行后续的代码）
+
+新建一个类 StartDialog，注意生成时勾选 `“add Q_OBJECT”`
+
+<br>
+
+先来看看头文件 `StartDialog.h`  
+记得类继承 QDialog 即可
+
+```cpp
+#ifndef STARTDIALOG_H
+#define STARTDIALOG_H
+
+#include <QObject>
+#include <QWidget>
+#include <QDialog>
+#include <QVBoxLayout>
+#include <QPushButton>
+
+// 必须继承QDialog
+class StartDialog : public QDialog
+{
+    Q_OBJECT
+public:
+    explicit StartDialog(QWidget *parent = nullptr);
+
+signals:
+
+private slots:
+    // 该槽函数为窗口中按钮点击后执行方法
+    void okButtonClicked();
+};
+
+#endif // STARTDIALOG_H
+```
+
+<br>
+
+接着来到 `StartDialog.cpp` 构建主界面
+
+```cpp
+#include "StartDialog.h"
+
+// 特别注意，这里也要修改为QDialog（默认生成的代码是QWidget）
+StartDialog::StartDialog(QWidget *parent)
+    : QDialog{parent}
+{
+    // 构建垂直容器，塞入一个按钮
+    QVBoxLayout *layout = new QVBoxLayout(this);
+    QPushButton *button = new QPushButton("OK", this);
+    layout->addWidget(button);
+    // 链接信号与槽，当按钮按下后，调用槽函数okButtonClicked
+    connect(button, &QPushButton::clicked, this, &StartDialog::okButtonClicked);
+}
+
+// 实现槽函数okButtonClicked
+void StartDialog::okButtonClicked(){
+    accept();
+}
+```
+
+<br>
+
+至此，该具有阻塞功能的 QDialog 即制作完毕
+
+来到主入口进行调用
+
+```cpp
+#include "Widget.h"
+#include "StartDialog.h" // 记得导入QDialog的头文件
+
+#include <QApplication>
+
+int main(int argc, char *argv[])
+{
+    QApplication a(argc, argv);
+    Widget w;
+
+    // 首先定义并使用exec执行显示QDialog
+    // exec方法的作用是，仅当当前widget销毁后，进程才会继续执行，否则一直阻塞
+    // 以此来实现首先显示StartDialog，之后才显示主页面Widget
+    StartDialog sd;
+    sd.exec();
+
+    w.show();
+    return a.exec();
+}
+```
+
+<br>
+
+#### 多页面阻塞与切换
+
+实现功能：创建一个 QDialog，当用户点击 QDialog 的叉号时，关闭该 dialog，并且直接截止执行进程
+
+承接上一节构建的 StartDialog
+
+我们直接在构造函数内添加以下函数  
+检测当点击叉号后，直接返回一个 reject 信号  
+`connect(this,&QDialog::finished,this,&StartDialog::reject);`
+
+然后在 main.cpp 里面根据 exec 的返回值检测（如果使用 reject，返回值为 0,；如果使用 accept，返回值为 1）  
+如果检测到返回值非 0，那么就继续展示 widget，否则直接退出程序
+
+```cpp
+#include "Widget.h"
+#include "StartDialog.h"
+
+#include <QApplication>
+
+int main(int argc, char *argv[])
+{
+    QApplication a(argc, argv);
+    Widget w;
+    StartDialog sd;
+    int res = sd.exec();
+
+    if(res){
+        w.show();
+    }
+    return a.exec();
+
+}
+```
+
+<br>
