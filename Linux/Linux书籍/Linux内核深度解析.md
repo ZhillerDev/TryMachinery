@@ -463,3 +463,43 @@ int execveat(int dirfd, const char *pathname, char *const argv[], char *const en
 <br>
 
 #### 终止进程
+
+系统调用 kill 后执行流程，需要判断 pid 的值来确认执行的对应操作
+
+`kill_pid_info` 负责向线程组发送信号
+
+![](./img/core/c6.png)
+
+<br>
+
+#### 查询子进程终止原因
+
+使用系统调用 waitid 把主要工作委托给函数 do_wait
+
+```cpp
+int waitid(idtype_t idtype, id_t id, siginfo_t *infop, int options);
+```
+
+函数 `do_wait` 遍历当前线程组的所有线程，并遍历各个线程的子进程，如果是僵尸进程，调用函数 `eligible_child` 来判断是不是符合等待条件的子进程，如果符合等待条件，调用函数 `wait_task_zombie` 进行处理。
+
+<br>
+
+### 进程状态
+
+就绪状态：进程描述符的字段 state 是 `TASK_RUNNING`  
+运行状态：进程描述符的字段 state 是 `TASK_RUNNING`
+
+轻度睡眠：也称为可打断的睡眠状态，进程描述符的字段 state 是 `TASK_INTERRUPTIBLE`  
+中度睡眠：进程描述符的字段 state 是 `TASK_KILLABLE`，只能被致命的信号打断  
+深度睡眠：也称为不可打断的睡眠状态，进程描述符的字段 state 是 `TASK_UNINTERRUPTIBLE`，不能被信号打断
+
+僵尸状态：进程描述符的字段 state 是 `TASK_DEAD`，字段 exit_state 是 EXIT_ZOMBIE  
+死亡状态：进程描述符的字段 state 是 `TASK_DEAD`，字段 exit_state 是 EXIT_DEAD
+
+![](./img/core/c7.png)
+
+<br>
+
+### 进程调度
+
+#### 调度策略
