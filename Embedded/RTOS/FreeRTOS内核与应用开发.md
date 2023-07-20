@@ -282,7 +282,7 @@ xTicksToDelay 表示延时时间，时间按照周期递减，此递减周期时
 
 这是于 TCB 中内置的延时变量
 
-最简单的 xTicksToDelay 任务挂起到唤醒全流程  
+最简单的 `xTicksToDelay` 任务挂起到唤醒全流程  
 此方法由于需要每次时基中断都必须全部扫描一次，很费时，后续使用延时列表进行改进
 
 1. 初始化 xTicksToDelay 并设置需要延时时间
@@ -291,3 +291,53 @@ xTicksToDelay 表示延时时间，时间按照周期递减，此递减周期时
 4. 每次时基中断就扫描一次 xTicksToDelay，若大于 0 则递减，若等于 0 表示任务就绪，开始切换任务
 
 <br>
+
+#### 任务延迟列表工作原理
+
+- 当任务需要延时时，挂起任务，并将任务从就绪列表删除，并插入到任务延时列表；
+- 更新下一个任务的解锁时刻变量 xNextTaskUnblockTime 的值；
+- 当系统时基计数器 xTickCount 的值与 xNextTaskUnblockTime 相等时，就表示有任务延时到期了，需要将该任务就绪；
+
+<br>
+
+### 时间片
+
+> FreeRTOS 与 RT-Thread 和 μC/OS 一样，都支持时间片功能。所谓时间片，就是同一个优先级下可以有多个任务，每个任务轮流享有相同的 CPU 时间，享有 CPU 的时间叫作时间片
+
+<br>
+
+#### 实验校验
+
+编写以下三个任务函数：
+任务 1：优先度 2，主体为无限循环的任务，非阻塞  
+任务 2：优先度 2，主体为无限循环的任务，非阻塞  
+任务 3：优先度 3，主体是一个 tick，阻塞
+
+由于该函数的作用：taskSELECT_HIGHEST_PRIORITY_TASK()  
+所以系统任务切换时总会调用该方法，以从循环列表里面查找优先级最高的任务（如任务 3），所以会每次都进入 1tick 的阻塞中，然后 1s 退出阻塞状态！
+
+<br>
+
+#### taskSELECT_HIGHEST_PRIORITY_TASK()
+
+函数实现流程
+
+1. 根据优先级位图表 uxTopReadyPriority 找到就绪任务的最高优先级，然后将优先级暂存在 uxTopPriority 中
+2. 获取优先级最高的就绪任务的 TCB，然后更新到 pxCurrentTCB
+3. listGET_OWNER_OF_NEXT_ENTRY()函数选择执行任务 1 还是任务 2
+
+<br>
+
+#### taskRESET_READY_PRIORITY()
+
+功能：当清除优先级位图表 `uxTopReady-Priority` 中相应的位时，会先判断当前优先级链表下是否还有其他任务，如果有则不清零
+
+<br>
+
+## FreeRTOS 内核应用开发
+
+> 此步骤需要野火 STM32 开发板，当然如果你没有的话看看笔记背一背应付面试也不是不行！
+
+<br>
+
+### 移植 FreeRTOS 到 STM32
