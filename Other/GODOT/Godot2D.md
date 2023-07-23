@@ -129,3 +129,5 @@ func _physics_process(delta):
 之后记得吧物理计算扥处理方法全部放置到 `_physics_process` 方法里面！！！
 
 <br>
+
+## 动画
