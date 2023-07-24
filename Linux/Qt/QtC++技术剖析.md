@@ -550,3 +550,278 @@ int main()
 ## iostream
 
 <br>
+
+### scanf/printf
+
+几种常见的输入输出流函数
+
+- `scanf` 从键盘接收输入数据
+- `printf` 向屏幕输出数据
+- `fscanf` 从文件输入数据
+- `fprintf` 向文件输出数据
+- `sscanf` 从内存块读取数据
+- `sprintf` 向内存块输出数据。
+
+C 语言输入输出方法存在这些缺点：  
+无法在编译阶段检查 scanf/printf 函数组参数的错误；无法对 scanf/printf 函数组的接口进行扩展以处理新的数据类型；scanf/printf 函数组的执行速度慢；scanf/printf 函数组所占用的空间无法被优化。
+
+<br>
+
+### iostream 整体架构
+
+iostream 包括以下三个层次
+![](./image/qtbook-tech/qt1.png)
+
+输入输出特性
+
+- 无论是输出还是输入操作，都经由一个缓冲区进行处理
+- 输出时，数据先写入到缓冲区，直到缓冲区满，其中的数据才会被真正写入到外部设备
+- 即便仅输入一个字符，也必须经过缓冲区
+
+<br>
+
+#### 流相关类
+
+iostream 整体架构图
+![](./image/qtbook-tech/qt1.png)
+
+`charT` 表示流中字符的类型  
+模板参数 `traits` 表示字符的特征  
+模板参数 `allocator` 表示堆管理器，该参数的默认值是系统的堆管理器
+
+<br>
+
+类模板 `basic_ios` 负责管理流缓冲区。它含有一个指针，指向流缓冲区。它还含有一个状态信息，来记录流缓冲区中数据的完备性。
+
+类模板 `basic_istream` 以及 `basic_ostream` 分别负责数据的输入和输出  
+ `basic_iostream` 通过继承这两个类模板，既能处理输入也能处理输出。
+
+类模板 `basic_istringstream` 从一个类型为 basic_string 的字符串对象读取数据  
+类模板 `basic_ostringstream` 则向这种类型的字符串对象输出数据
+
+<br>
+
+#### 流缓冲区
+
+basic_ios 派生类中的缓冲区指针会指向 `basic_streambuf` 或者 `basic_filebuf` 的对象
+
+抽象类型 basic_streambuf 不含有任何关于外部设备的信息
+
+类模板 basic_filebuf 将输出缓冲区中的数据写入文件，或者将文件中的数据读取到输入缓冲区
+
+<br>
+
+### 模板特化后整体结构
+
+iostream 将所有的 `charT` 特化为 `char` ，所有的 `traits` 特化为 `char_traits< char>`
+
+iostream 还将所有的 `charT` 特化为 `wchar_t`，所有的 `traits` 特化为`char_traits<wchar_t >`
+
+<br>
+
+### 文件流
+
+`basic_ifstream` 以及 `basic_ofstream` 分别负责文件的输入和输出  
+`basic_fstream` 能够对文件进行输入和输出双向的操作
+
+<br>
+
+#### 文件流对象创建
+
+`fstream` 代码实例：创建一个文件流对象 fs，在文件“test.txt”的尾部写入数据
+
+`ios_base` 中定义了 6 个常量
+
+- in 表示读一个文件
+- out 表示写一个文件
+- app 表示仅在一个文件的末尾写入
+- trunc 表示清空文件内容
+- binary 表示以二进制方式访问一个文件
+- ate（是 at end 的缩写）表示初始的读/写位置为文件的末尾。
+
+```cpp
+fstream fs("test.txt", ios_base::out | ios_base::app)
+```
+
+当读入文件（in 模式）则要求文件必须存在；  
+当写入文件（out 模式）指定文件可不存在，由系统新建一个；
+
+<br>
+
+#### 常见文件流操作
+
+一般的，你可以直接使用 `<<` 或者 `>>` 执行输入输出操作  
+下面代码展示使用 fstream 对文件读写流程
+
+```cpp
+#include <iostream>
+#include <fstream>
+#include <string>
+using namespace std;
+
+int main()
+{
+    // 打开文件，以输入、输出和追加的方式打开
+    fstream fs("data\\test.txt", ios_base::in | ios_base::out | ios_base::app);
+
+    // 检查文件是否成功打开，如果没有成功打开则输出错误信息并退出程序
+    if (!fs) {
+        cerr << "cannot open test.txt";
+        exit(-1);
+    }
+
+    // 向文件中写入字符串 "hello, world\n"
+    fs << "hello, world\n";
+
+    // 将文件读写位置重新定位到文件开头
+    fs.seekg(0);
+
+    // 定义字符串变量 s，从文件中读取一个单词并存储到字符串 s 中
+    string s;
+    fs >> s;
+
+    // 输出字符串 s
+    cout << s;
+}
+```
+
+常用 `basic_istream` 中的 `getline()`获取一整行的文本内容
+
+<br>
+
+#### 输出格式设定
+
+`hex、oct、dec` 分别将输出的数制设置为十六进制、八进制和默认的十进制  
+`cout << hex << 20;`
+
+setw，流操作符，设置其后紧接着的那个数据的输出宽度  
+`cout << swtw(4) << 3;`
+
+setprecision(m) 将设置小数点及其后面的数字占用 m 个字符的位置
+
+boolalpha 流操作符，可以让 bool 类型数据输出形式为 true 何 false 而不是 1 和 0
+
+left 流操作符，结果左对齐
+
+<br>
+
+#### 文件流状态
+
+C++流提供了以下的几个成员函数来返回一个流的状态信息
+
+1. eof()。如果输入流已经到达末尾，该函数返回真。
+2. bad()。如果用户试图对一个流对象执行非法操作，比如将文件指针移动到文件尾部之后的某个地方，该函数返回真，表示流对象被破坏了。
+3. fail()。如果施加到流的某个操作未能成功，比如一个输入流对象希望读取一个整数但是实际的输入数据却是一个字符串，该函数将返回真。
+4. good()。当以上条件都没有出现时，该函数返回真。
+
+流使用者可以主动地分析流中的数据，调用成员函数 `setstate()`来设置流的状态信息
+
+```cpp
+char ch;
+if ((ch = ifs.get()) != '<' )
+    is.setstate( ios_base::failbit );
+```
+
+<br>
+
+### 字符串流
+
+介绍类模板 `basic_stringstream` 读取和输出到一个 basic_string 对象的流程
+
+<br>
+
+#### 字符串流内部缓冲区
+
+stringstream 对象的流缓冲区指针指向一个 stringbuff 对象，该对象管理一个内部的字符缓冲区
+
+内部字符缓冲区有两个指针：读取操作会后移“读指针”，而写入操作会后移“写指针”
+
+<br>
+
+#### 字符串流使用
+
+```cpp
+// istringstream使用
+int i;
+if (istringstream(argv[1]) >> i)
+
+// ostringstream使用
+struct date {
+    int day,month,year;
+} today = {9,3,2011};
+ostringstream ostr;      ①
+ostr << today.month << '-' << today.day <<'-' << today.year; ②
+if (ostr)
+    cout<<ostr.str();   ③
+```
+
+<br>
+
+### 流缓冲区
+
+可以令多个流对象共享一个流缓冲区
+
+```cpp
+#include <iostream>
+#include <fstream>
+using namespace std;
+int main()
+{
+    ofstream dec_stream( "demo.txt" );   ①
+    ostream  hex_stream( dec_stream.rdbuf() );  ②
+    hex_stream << hex << showbase;
+    int a[4] = {12, 34, 56, 78};
+    for (int i=1; i<4; i++){
+            dec_stream << a[i];                        ③
+            hex_stream << "[" << a[i] << "] ";         ④
+    }
+    return 0;
+}
+```
+
+<br>
+
+流缓冲区可以执行复制操作
+
+```cpp
+#include <fstream>
+#include <sstream>
+#include <iostream>
+using namespace std;
+
+int main()
+{
+    // 打开红楼梦文本文件
+    ifstream fs("hong_lou_meng.txt");
+
+    // 将文件内容读取到stringstream对象中
+    stringstream ss;
+    ss << fs.rdbuf();   // ①
+
+    // 将stringstream对象中的内容转为字符串类型
+    string str = ss.str();      // ②
+
+    // 查找字符串 "黛玉" 最后一次出现的位置
+    string::size_type pos = str.rfind("黛玉");
+
+    // 将stringstream对象的读写位置定位到 "黛玉" 最后一次出现的位置
+    ss.seekg(pos);
+
+    // 读取一行字符串，即 "黛玉" 最后一次出现的那句话
+    string one_line;
+    getline(ss, one_line);
+
+    // 输出 "黛玉" 最后一次出现的那句话
+    cout << one_line << endl;
+
+    return 0;
+}
+```
+
+<br>
+
+### 二进制文件处理
+
+
+
+<br>
