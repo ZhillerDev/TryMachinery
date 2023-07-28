@@ -820,8 +820,230 @@ int main()
 
 <br>
 
-### 二进制文件处理
+### 用户自定义 IO
 
+通过定义类，附加两个友元函数，并利用 `ostream` 和 `instream` ，即可实现自定义 IO
 
+```cpp
+#include <iostream> //包含输入输出流库
+using namespace std; //使用标准命名空间
+
+class CPoint { //定义CPoint类
+public:
+    CPoint(double p_x=0, double p_y=0) {x=p_x;  y=p_y;}; //构造函数
+    friend ostream& operator << (ostream&, const CPoint&); //输出运算符重载函数的友元声明
+    friend istream& operator >> (istream&, CPoint&); //输入运算符重载函数的友元声明
+private:
+    double x,y; //CPoint对象的x和y坐标
+};
+
+ostream& operator <<( ostream& os, const CPoint& point ) //输出运算符重载函数的实现
+{
+    os << "<" << point.x << "," << point.y << ">"; //输出CPoint对象的坐标
+    return os; //返回输出流对象
+}
+
+istream& operator >>(istream& is, CPoint& point) //输入运算符重载函数的实现
+{
+    char ch;
+    is >> ch;
+    if ( ch!='<'){  //如果输入不是以 '<' 开始，则输入失败
+            is.setstate( ios_base::failbit ); //设置输入流的状态为失败
+            return is; //返回输入流对象
+    }
+    is >> point.x >> ch >> point.y >> ch; //输入CPoint对象的坐标
+}
+
+int main() //主函数
+{
+    CPoint p; //定义一个CPoint对象p
+    while ( cin>> p ) //从标准输入流中读取CPoint对象，如果读取成功则进入循环
+            cout << p << endl; //输出CPoint对象p，然后换行
+}
+```
 
 <br>
+
+## QT 中的流
+
+下图展示 QT 中流的框架，含两个核心类 QTextStream 以及 QDataStream  
+![](./image/qtbook-tech/qt3.png)
+
+`QTextStream` 对数据进行文本格式的输入/输出  
+`QDataStream` 对数据进行二进制格式的输入/输出  
+`QFile` ，负责文件的处理。  
+`QTemporaryFile` 创建并访问临时文件。  
+`QBuffer` 负责以 QIODevice 的接口访问一个 QByteArray 对象。  
+`QProcess` 负责以进程的形式启动一个外部程序，并和该进程进行通信。  
+`QTcpSocket` 与 QUdpSocket 负责使用 TCP、UDP 协议进行网络数据的发送和接收。
+
+`QTextCodec` 负责 Unicode 与各种字符编码方式之间的转换。  
+`QLocale` 负责实现各种区域文化。
+
+<br>
+
+### 文件系统与底层文件操作
+
+UNIX 系统中路径分割符为“/”，而 Windows 系统的为“\”
+
+#### 文件系统
+
+Qt 使用类 QFileInfo 表示一个目录项的属性，类名中的“File”并不仅仅表示文件，而是泛指所有类型的目录项。
+
+类 QDir 刻画一个目录的详细信息。  
+成员函数 entryInfoList()，返回该目录下子目录、文件以及链接的信息。
+
+<br>
+
+#### 类 QFile
+
+无论对于什么操作系统，子目录之间的分隔符都应该为“/”
+
+```cpp
+//包含Qt框架中的QFile和QDebug库
+#include <QFile>
+#include <QDebug>
+
+int main()
+{
+    //定义一个QFile对象f，并指定要打开的文件路径
+    QFile f("data/test.txt");
+
+    //以只读文本模式打开文件，如果打开失败，则返回-1，表示程序发生错误
+    if (!f.open(QIODevice::ReadOnly | QIODevice::Text))
+        return -1;
+
+    //将文件中的所有内容读取到一个QByteArray对象中
+    QByteArray data = f.readAll();
+
+    //输出QByteArray对象data的内容到控制台
+    qDebug() << data;
+
+    return 0;
+}
+```
+
+<br>
+
+### QTextStream
+
+`QTextStream` 在其内部使用两个字节长的 QChar 类型存放每个字符，使用 Unicode 编码方式
+
+使用 `QTextCodec` 进行编码转换
+
+```cpp
+#include <QFile> //包含Qt框架中的QFile库
+#include <QTextStream> //包含Qt框架中的QTextStream库
+
+int main(int argc, char *argv[])
+{
+    //定义一个QFile对象src_f，并指定要打开的文件路径
+    QFile src_f("data/latin1.txt");
+
+    //以只读模式打开文件，如果打开失败，则返回-1，表示程序发生错误
+    if (!src_f.open(QIODevice::ReadOnly))
+        return -1;
+
+    //创建一个QTextStream对象in，并将其与QFile对象src_f关联
+    QTextStream in(&src_f);
+
+    //设置QTextStream对象in的编码格式为Latin1
+    in.setCodec("latin1");
+
+    //将文件中的所有内容读取到一个QString对象data中
+    QString data = in.readAll();
+
+    //定义一个QFile对象dest_f，并指定要打开的文件路径
+    QFile dest_f("data/unicode.txt");
+
+    //以只写模式打开文件，如果打开失败，则返回-1，表示程序发生错误
+    if (!dest_f.open(QIODevice::WriteOnly))
+        return -1;
+
+    //创建一个QTextStream对象out，并将其与QFile对象dest_f关联
+    QTextStream out(&dest_f);
+
+    //设置QTextStream对象out的编码格式为UTF-16
+    out.setCodec("UTF-16");
+
+    //将QString对象data中的内容写入到文件中
+    out << data;
+
+    return 0;
+}
+```
+
+<br>
+
+### QDataStream
+
+QDataStream 可以处理自定义类型
+
+用户 struct 定义新的结构体，并通过运算符重载的方式，搭配友元实现
+
+```cpp
+struct ColorText{
+    QString text;
+    QColor  color;
+};
+QDataStream& operator << (QDataStream & stream, const ColorText & data)
+{
+    stream << data.text << data.color;①
+    return stream;
+}
+QDataStream& operator >> (QDataStream & stream, ColorText & data)
+{
+    stream >> data.text >> data.color;②
+    return stream;
+}
+int main()
+{
+    ColorText data;
+    data.text  = "Red";  data.color = Qt::red;
+    QFile file( "test.dat" );
+    if( !file.open( QIODevice::ReadWrite) )  return -1;
+    QDataStream stream( &file );
+    stream << data;
+    file.seek(0);   stream >> data;
+    file.close();
+    qDebug() << data.text << " " << data.color;
+}
+```
+
+<br>
+
+### QLocale
+
+`QLocale` 为每种区域文化定义了统一的名字，这个名字不会随着操作系统、编译器平台的变化而变化
+
+`QLocale` 的静态成员函数 system()返回这个区域文化。  
+Qt 应用程序本身会有一个默认的区域文化，构造函数 QLocale()返回的就是后者。起初，程序默认的区域文化被设
+
+```cpp
+QTextStream out( stdout, QIODevice::WriteOnly);
+int main( )
+{
+    double x = 123.456;
+    out.setLocale( QLocale(QLocale::German) );       ①
+    out << fixed << x << endl;
+}
+```
+
+<br>
+
+## 隐式共享与 d-pointer
+
+隐式共享定义：一个类的多个对象所占用的内存是相互独立的。如果其中某些对象数据成员的取值完全相同，我们可以令它们共享一块内存以节省空间。只有当程序需要修改其中某个对象的数据成员时，我们再为该对象分配新的内存。
+
+d-pointer：把与主类密切相关的数据成员抽离作为一个私类，主类中再定义一个指针指向该私类
+
+<br>
+
+### 隐式共享
+
+QString 中的成员函数 `toCaseFolded()` 就用到了隐式共享技术  
+它使用引用计数的方式判断字符串是否相同，如果相同，则共享一块内存地址
+
+<br>
+
+### d-pointer 在隐式共享中的应用

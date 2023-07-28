@@ -150,6 +150,147 @@ JSON 解析其实很简单，就是一个逆过程，只需要按照 JSON 的深
 
 <br>
 
+### XML
+
+#### 常见 xml 库及其成员函数
+
+三个重要的 xml 库
+
+1. QDomDocument 类：QDomDocument 类是 Qt 中最常用的 XML 文档类之一，用于创建、读取和操作 XML 文档。
+
+   - setContent()：从一个 QIODevice 对象或 QString 对象中加载 XML 文档。
+   - createElement()：创建一个 XML 元素。
+   - createAttribute()：创建一个 XML 属性。
+   - createTextNode()：创建一个 XML 文本节点。
+   - appendChild()：将一个 XML 元素或文本节点添加到另一个 XML 元素中。
+   - toByteArray()：将 QDomDocument 对象转换为 QByteArray 对象。
+
+2. QXmlStreamReader 类：QXmlStreamReader 类是另一个用于读取 XML 文档的类。
+
+   - setDevice()：将 QXmlStreamReader 对象与 QIODevice 对象关联。
+   - readNext()：移动到下一个 XML 标记。
+   - isStartElement()：检查当前标记是否是一个起始元素。
+   - attributes()：返回当前元素的属性列表。
+   - text()：返回当前元素的文本。
+
+3. QXmlStreamWriter 类：QXmlStreamWriter 类是另一个用于写入 XML 文档的类。它提供了一组 API，可以让您轻松地创建 XML 元素、属性和文本，并将它们写入到一个 QIODevice 对象中。
+
+   - setDevice()：将 QXmlStreamWriter 对象与 QIODevice 对象关联。
+   - writeStartElement()：写入一个起始元素。
+   - writeAttribute()：写入一个元素属性。
+   - writeCharacters()：写入一个文本节点。
+   - writeEndElement()：写入一个结束元素。
+
+<br>
+
+#### 写 XML 文件
+
+首先需要在 pro 文件添加 `QT += xml`
+
+下面一个简单的案例展示了写 XML 文件到当前目录下的函数
+
+```cpp
+void Widget::on_pushButton_clicked()
+{
+    // 创建一个QDomDocument对象
+    QDomDocument doc;
+
+    // 创建根元素
+    QDomElement root = doc.createElement("root");
+    doc.appendChild(root);
+
+    // 添加一个子元素
+    QDomElement child = doc.createElement("child");
+    root.appendChild(child);
+
+    // 添加一个属性
+    child.setAttribute("id", "1");
+
+    // 添加一些文本
+    QDomText text = doc.createTextNode("Hello World!");
+    child.appendChild(text);
+
+    // 将文档保存到文件中
+    QFile file("example.xml");
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)){
+        return;
+    }
+
+    QTextStream stream(&file);
+    stream << doc.toString();
+    file.close();
+}
+```
+
+最终打开 xml 文件是这样的
+
+```xml
+<!-- example.xml -->
+<root>
+ <child id="1">Hello World!</child>
+</root>
+```
+
+<br>
+
+#### 读 XML 文件
+
+以上一小节生成的 example.xml 作为蓝本，用下面的代码读取对应内容
+
+```cpp
+#include <QDomDocument>
+#include <QFile>
+#include <QDebug>
+
+int main()
+{
+    QDomDocument doc;
+    QFile file("example.xml");
+
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qDebug() << "Failed to open file";
+        return 1;
+    }
+
+    if (!doc.setContent(&file)) {
+        file.close();
+        qDebug() << "Failed to parse the XML file";
+        return 1;
+    }
+
+    file.close();
+
+    // 获取根元素
+    QDomElement root = doc.documentElement();
+
+    // 遍历子元素
+    QDomNodeList children = root.childNodes();
+    for (int i = 0; i < children.count(); i++) {
+        QDomNode node = children.at(i);
+        if (node.isElement()) {
+            QDomElement child = node.toElement();
+            qDebug() << "Child element name: " << child.tagName();
+            qDebug() << "Child element id attribute: " << child.attribute("id");
+            qDebug() << "Child element text: " << child.text();
+        }
+    }
+
+    return 0;
+}
+```
+
+<br>
+
+观察控制台输出
+
+```
+Child element name:  "child"
+Child element id attribute:  "1"
+Child element text:  "Hello World!"
+```
+
+<br>
+
 ### 网络请求
 
 <br>
