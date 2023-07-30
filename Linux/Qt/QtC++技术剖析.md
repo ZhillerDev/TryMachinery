@@ -1057,3 +1057,333 @@ QString 中的成员函数 `toCaseFolded()` 就用到了隐式共享技术
 <br>
 
 ### 二进制代码兼容
+
+采用动态链接方式时，客户只需要更新 Qt 的动态链接库，不需要重新编译、部署 Qt 应用程序。  
+如果在这种情形下这些 Qt 应用程序仍然能够正常工作，我们称这个 `动态链接库是二进制兼容的`
+
+程序员不可以添加、删除非静态数据成员，不可以更改非静态数据成员的定义顺序、类型
+
+二进制兼容性通常包括以下三个方面
+
+1. ABI 兼容性：ABI（Application Binary Interface）指的是二进制接口，即不同编译器生成的二进制代码之间的接口规范。如果两个编译器使用相同的 ABI 规范，那么它们生成的二进制代码就可以在不同的平台上互相使用，这就是 ABI 兼容性。
+2. 数据类型兼容性：C++ 的数据类型在不同编译器、不同版本或不同操作系统上可能会有不同的大小和布局，如果不同的编译器使用相同的数据类型布局，就可以实现数据类型兼容性。
+3. 二进制格式兼容性：不同的操作系统和平台可能使用不同的二进制格式来存储可执行文件和库文件，如果不同的平台使用相同的二进制格式，就可以实现二进制格式兼容性。
+
+<br>
+
+### d-pointer 模式实现
+
+> `D-pointer` 模式用于实现类的私有数据封装和二进制接口兼容性
+
+实现 d-pointer 模式的主要步骤：
+
+1. 定义一个包含类的私有数据的结构体，并将其作为类的成员变量。
+2. 将类的所有公共成员函数的实现都移动到类的实现文件中，并在实现文件中定义一个指向私有数据结构体的指针。这个指针可以使用 new 运算符在堆上分配内存，也可以使用 std::unique_ptr 或 std::shared_ptr 等智能指针管理内存。
+3. 在类的构造函数中，为 D-指针分配内存，并将其指向私有数据结构体。在析构函数中，释放 D-指针的内存。
+4. 将类的公共接口重定向到私有数据结构体中的成员函数。这可以通过在公共接口中使用 D-指针来实现。
+5. 在类的头文件中，只声明类的公共接口，而不暴露私有数据结构体或 D-指针。
+
+<br>
+
+## Qt 容器及迭代器
+
+> 为便于跨平台，QT 研发出了 QTL（类似于 Cpp 的 STL），但是其运行速度较慢
+
+<br>
+
+### QTL 概述
+
+#### 几种常见的迭代器及其对应类型
+
+几种必备容器（单类型容器）
+
+- `QVector<T>` 将其所有元素存放在一块连续的内存中。随机访问的速度很快，但是插入/删除操作很慢。
+- `QStack<T>`是`QVector<T>`的子类，实现栈的功能
+- `QList<T>` 在内部使用一个指针数组指向容器元素。能够快速随机访问每个元素。在容器首、尾添加元素的速度也较快。
+- `QStringList` 是 `QList<QString>` 的子类，能高效地处理字符串列表。`QQueue<T>` 是 `QList<T>`的子类，实现了队列的功能。
+- `QLinkedList<T>` 能够在很短而且固定的时间内完成元素的插入/删除操作，但是排序、查找操作却较慢。
+
+<br>
+
+键值对类型容器
+
+- `QMultiMap<Key, T>`  
+  它是 QMap 的子类，其 insert 函数允许新元素的 key 和已有元素的 key 相同。  
+  它不支持运算符“[]”，取而代之的是函数 values()，该函数返回所有具有指定 key 值的元素，并将它们存放在一个 QList 对象中。
+- `QHash<Key, T>`  
+  使用哈希表存取 key，因而能够快速地依据 key 定位某个元素  
+  元素并没有按照 key 的取值排序，降低了搜索的性能
+- `QSet<T>`  
+  内部使用 QHash 实现集合的功能  
+  能够快速完成集合的插入、元素定位操作。  
+  unite()合并两个集合，intersect()求取两个集合的交集，substract()求取两个集合之差，contains()判断一个集合是否含有某个元素。
+- `QCache<Key,T>`  
+  依然也为键值对的存储形式  
+  QCache 所能存放的元素数量被有意地限定  
+  当有新元素需要被插入到容器中时，最近使用频率最低的那些元素会被删除。
+
+<br>
+
+#### QTL 容器对应迭代器
+
+foreach 遍历容器的时候，接收的第一个参数表示 foreach 得到的元素，这里必须使用 typedef 预定义类型，然后直接使用
+
+就如下方代码的 `foreach( pair_type element, list)`，你不可以把 pair_type 更换为 `QPair<string,double>`
+
+```cpp
+typedef QPair<string,double> pair_type;
+QList< pair_type > list;
+list << pair_type("pi",3.14) << pair_type("e", 2.718);①
+foreach( pair_type element, list)②
+    cout << element.first  << " " << element.second << endl;
+```
+
+<br>
+
+#### 通用算法
+
+只要一个容器内部的迭代器支持这些基本操作，该函数模板就可以操作这个容器。这样的函数模板被称为 `通用算法（algorithm）`
+
+通用算法 `qSort` 使用快速排序算法，将一个元素序列排成升序  
+对于有序容器，通用算法 `qBinaryFind` 使用二分搜索算法  
+`qUpperBound` 在一个元素序列中寻找最后一个大于指定值的元素，返回指向该元素的一个迭代器
+`无论容器是否有序，qFind` 在容器中逐个搜索与某个指定值相等的元素，并返回一个指向该元素的迭代器。
+
+`qCount` 计算某个值在容器中出现的次数。  
+`qDeleteAll` 调用 C++运算符 delete，析构容器中的元素。  
+`qEqual` 比较两个元素序列是否相等。  
+`qSwap` 调换两个元素的值。
+
+<br>
+
+#### 函子（谓词）
+
+QTL 提供了类似于 CPP 中的“谓词”操作
+
+即类似于 CPP 中的 sort 函数，最后一个参数为控制排序方式的匿名回调函数
+
+下图即使用了 QT 自己提供的成型谓词 `qLess` 来进行降序排列
+
+```cpp
+QList<int> ql;
+ql << 4 << 3 << 2 << 1 << 0;
+qSort(ql.begin(),  ql.end(),  qLess<int>() );
+```
+
+<br>
+
+### QTL 容器与 QDataStream
+
+一段代码，自己体会，不去解释，学学就懂
+
+```cpp
+/**
+ * @brief 保存词典到文件中
+ *
+ * @param dict 词典对象的引用
+ * @param fname 要保存的文件名
+ * @return int 如果保存成功返回 0，否则返回 -1
+ */
+int save_dict_map(dict_type& dict, char* fname)
+{
+    QFile dictf(fname);   // 创建一个 QFile 对象，并指定文件名
+    if (!dictf.open(QIODevice::WriteOnly)) return -1;  // 尝试以只写方式打开文件，如果失败则返回 -1
+    QDataStream ds(&dictf);  // 创建一个 QDataStream 对象，并将其与 QFile 关联
+    ds << dict;  // 将词典对象保存到 QDataStream 中
+    cout << fname << " saved\n";  // 输出保存成功的消息
+}
+
+/**
+ * @brief 从文件中加载词典
+ *
+ * @param dict 词典对象的引用
+ * @param fname 要加载的文件名
+ * @return int 如果加载成功返回 0，否则返回 -1
+ */
+int load_dict_map(dict_type& dict, char* fname)
+{
+    QFile dictf(fname);  // 创建一个 QFile 对象，并指定文件名
+    if (!dictf.open(QIODevice::ReadOnly)) return -1;  // 尝试以只读方式打开文件，如果失败则返回 -1
+    QDataStream ds(&dictf);  // 创建一个 QDataStream 对象，并将其与 QFile 关联
+    ds >> dict;  // 从 QDataStream 中加载词典对象
+    cout << fname << " loaded\n";  // 输出加载成功的消息
+}
+```
+
+<br>
+
+### 类型分类计数在 QList 中的应用
+
+容器元素的类型被表示为 QList 的模板参数 T  
+如果 T 占用的内存较多，QList 将每个容器元素存放在堆中，再维护一个指针数组，指向这些元素
+
+对 QList 的插入或者删除操作会比单向链表的要稍慢，因为需要使用标准函数 `memmove()` 来移动数组中的指针
+
+<br>
+
+## 多线程与可重入
+
+<br>
+
+### 创建线程
+
+以下代码可以调用计算机内部的小喇叭隔一段时间发一次声
+
+```cpp
+#include <QThread>  // 包含 QThread 头文件
+#include <Windows.h>  // 包含 Windows API 头文件
+
+class Thread : public QThread {  // 定义线程类 Thread，继承自 QThread
+protected:
+    void run() {  // 在新线程中运行的函数
+        for (int i = 0; i < 5; i++) {  // 循环 5 次
+            Beep(800, 1000);  // 发出一个 800 Hz 的蜂鸣声，持续 1000 毫秒
+            Sleep(1000);  // 暂停 1000 毫秒
+        }
+    };
+};
+
+int main() {
+    Thread t;  // 创建 Thread 对象 t
+    t.start();  // 启动线程 t，调用 t 的 run() 函数
+    Sleep(1000);  // 暂停 1000 毫秒
+    for (int i = 0; i < 5; i++) {  // 循环 5 次
+        Beep(400, 1000);  // 发出一个 400 Hz 的蜂鸣声，持续 1000 毫秒
+        Sleep(1000);  // 暂停 1000 毫秒
+    }
+}
+```
+
+### 线程间同步
+
+`QMutex` 负责锁定某个共享资源，使得某个线程能够以独占方式使用该资源，该类的对象被称为互斥体
+
+`QSemaphore` 该类的对象被称为信号量，适用于多个具有相同性质的共享资源
+
+互斥体和信号量负责管理系统的共享资源
+
+<br>
+
+#### 互斥体类 QMutex
+
+Qt 提供了类 QMutex 来实现互斥体的功能
+
+某线程利用 QMutex 调用 `lock` 函数获得锁，此时当其余线程再次调用 lock 时就会进入阻塞态（blocked）  
+当调用 `unlock` 函数才会释放锁
+
+为便于快速加锁与去掉锁，提供 `QMutexLocker` 使用  
+其接收一个 mutex 对象，在构造函数中调用 lock 函数，在其析构函数中调用 unlock 函数
+
+<br>
+
+#### 信号量类 QSemaphore
+
+QSemaphore 管理多个具有相同性质的资源,一个信号量记录着这些资源的数量，用户通过这个信号量申请一个资源来使用，使用完毕后，也会通过这个信号量释放该资源
+
+QSemaphore 提供了两个成员函数来管理这些资源
+
+- acquire()，可以获得其中一个资源，也就是一个空白元素
+- release()，表示有一个新的空闲元素被释放出来
+
+信号量处理循环缓冲区的方法代码
+
+```cpp
+const int DataSize   = 500;               ①
+const int BufferSize= 100;
+char buffer[BufferSize];                  ②
+QSemaphore freeElements(BufferSize);
+QSemaphore usedElements;
+class Producer : public QThread {
+public:
+    void run(){
+            for (int i = 0; i < DataSize; ++i) {
+                freeElements.acquire();
+                buffer[i % BufferSize] = '0' + i % 10;
+                usedElements.release();
+            }
+    }
+};
+class Consumer : public QThread {
+public:
+    void run(){
+            for (int i = 0; i < DataSize; ++i) {
+                usedElements.acquire();
+                fprintf(stdout, "%c", buffer[i % BufferSize]);
+                freeElements.release();
+            }
+    }
+};
+int main()
+{
+    Producer producer;
+    Consumer consumer;
+    producer.start();   consumer.start();
+    producer.wait();    consumer.wait();     ③
+    return 0;
+}
+```
+
+<br>
+
+#### 条件量类 QWaitCondition
+
+有些情况下一个线程需要等待某个状态的出现才能继续运行，可以使用条件量管理这种状态信息
+
+等待条件量的线程首先调用 wait 进入阻塞态，等条件量满足后调用 wakeAll 唤醒线程
+
+<br>
+
+### 线程安全与可重入
+
+判断线程安全的几个必要指标
+
+1. 当多个线程同时调用该函数时，即使在不同线程中该函数访问了同一块内存，这些访问也会安排为顺序进行的，使得每个线程中该函数的执行结果是确定的
+2. 如果一个类的所有成员函数都是线程安全的，我们称这个类是线程安全的
+
+<br>
+
+可重入概念：多个线程能够安全地访问一个类的不同对象
+
+一般情况下，如果一个类不访问全局对象或者其他共享数据，该类就是可重入的
+
+不可重入的类：
+
+- 具有静态数据成员
+- 某个或者某些成员函数的内部定义了静态局部变量
+- 某个数据成员是指针
+- 而该类多个对象的这个指针指向同一块内存
+
+<br>
+
+### 多线程下的 singleton 模式
+
+#### 传统实现
+
+下面给出一个 cpp 中实现单例模式的最简单的代码
+
+```cpp
+ofstream out("log.txt");
+class Singleton {
+    int i;
+    static Singleton  singleton;         ①
+    Singleton(int ii) {
+            i=ii;
+            out<< "Singleton constructed\n";
+    }
+    Singleton(const Singleton &);
+public:
+    static Singleton * instance( ) {return & singleton; }    ②
+    void print( )  { cout <<i; }
+};
+
+Singleton Singleton::singleton(0);       ③
+int main() {
+    Singleton::instance( )->print( );
+}
+```
+
+<br>
+
+#### 原子操作实现多线程
+
+qt 提供了对应的原子操作类，如 QBasicAtomicInt 表示对整数执行原子操作
