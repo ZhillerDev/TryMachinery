@@ -563,3 +563,563 @@ int connect(int sockfd, struct sockaddr *serv_addr, socklen_t addrlen);
 <br>
 
 ### 实现迭代服务器端和客户端
+
+#### 迭代服务器端实现
+
+重复调用 accept 函数即可实现客户端链接请求的持续受理
+
+目前我们仅能实现：受理完一个客户端后在受理下一个，无法同时受理多个客户端（这一技巧将在后续展开介绍）
+
+<br>
+
+#### 迭代 echo 服务器端与客户端
+
+基本运行方式：
+
+1. 服务器端同一时刻只与一个客户端相连接，并提供回声服务。
+2. 服务器端依次向 5 个客户端提供服务，然后退出。
+3. 客户端接收用户输入的字符串并发送到服务器端。
+4. 服务器端将接收到的字符串数据传回客户端，即”回声“。
+5. 服务器端与客户端之间的字符串回声一直执行到客户端输入 Q 为止。
+
+<br>
+
+#### echo 客户端完美实现
+
+> 一般的，服务器端不可能提前知道客户端发来的数据有多长，所以只能通过应用层协议确定数据边界以及对应长度大小
+
+应用层协议实际就是在服务器端/客户端的实现过程中逐步定义的规则的集合。
+
+下面依次展示了计数器服务器端和计数器客户端的代码
+
+```cpp
+// 客户端代码
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+
+#define BUF_SIZE 50
+#define OPSZ 4 // 定义每个操作数在 TCP 报文中占用的字节数
+
+void error_handling(char *message);
+
+int main(int argc, char *argv[])
+{
+    int sock;
+    char opmsg[BUF_SIZE]; // opmsg 用来存储要发送的数据，注意是 char 类型数组
+    struct sockaddr_in serv_addr;
+    int operand_count, result;
+
+    if (argc != 3)
+    {
+        printf("Usage : %s <IP> <port>\n", argv[0]);
+        exit(1);
+    }
+
+    sock = socket(PF_INET, SOCK_STREAM, 0);
+    if (sock == -1)
+        error_handling("socket() error");
+
+    memset(&serv_addr, 0, sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_addr.s_addr = inet_addr(argv[1]);
+    serv_addr.sin_port = htons(atoi(argv[2]));
+
+    if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)))
+        error_handling("connect() error");
+    else
+        puts("Connecting..........\n");
+
+    fputs("Operand count: ", stdout);
+    scanf("%d", &operand_count);
+    opmsg[0] = (char)operand_count; // 数据的第一个字节存储操作数的数量，注意要将变量类型转换为 char。
+
+    for (int i = 0; i < operand_count; i++)
+    {
+        printf("Operand %d: ", i + 1);
+        scanf("%d", (int *)&opmsg[i * OPSZ + 1]); // 从第二个字节开始每四个字节存储一个操作数，向数组存数据时先取地址再转换类型。
+    }
+
+    fgetc(stdin);
+    fputs("Operator: ", stdout);
+    scanf("%c", &opmsg[operand_count * OPSZ + 1]); // 再用一个字节存储运算符
+
+    write(sock, opmsg, operand_count * OPSZ + 2); // 发送数据
+    read(sock, &result, OPSZ);                    // 接收运算结果：运算结果是一个 4 字节的操作数
+
+    printf("Operation result: %d\n", result);
+
+    close(sock);
+    return 0;
+}
+
+void error_handling(char *message)
+{
+    fputs(message, stderr);
+    fputc('\n', stderr);
+    exit(1);
+}
+```
+
+<br>
+
+```cpp
+// 服务端代码
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+
+#define BUF_SIZE 50
+#define OPSZ 4
+void error_handling(char *message);
+int calculate(int operand_count, int operands[], char operator);
+
+int main(int argc, char *argv[])
+{
+    int serv_sock, clnt_sock;
+    struct sockaddr_in serv_addr, clnt_addr;
+    int clnt_addr_sz;
+    char message[BUF_SIZE];
+
+    if (argc != 2)
+    {
+        printf("Usage : %s <port>", argv[0]);
+        exit(1);
+    }
+
+    serv_sock = socket(PF_INET, SOCK_STREAM, 0);
+
+    memset(&serv_addr, 0, sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    serv_addr.sin_port = htons(atoi(argv[1]));
+
+    if (bind(serv_sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) == -1)
+        error_handling("bind() error");
+
+    if (listen(serv_sock, 5) == -1)
+        error_handling("listen() error");
+
+    clnt_addr_sz = sizeof(clnt_addr);
+    for (int i = 0; i < 5; i++)
+    {
+        if ((clnt_sock = accept(serv_sock, (struct sockaddr *)&clnt_addr, &clnt_addr_sz)) == -1)
+            error_handling("accept() error");
+
+        int operand_count;
+        read(clnt_sock, &operand_count, 1); // 首先读取第 1 个字节，获取操作数的数量
+
+        char operands[BUF_SIZE];
+        for (int i = 0; i < operand_count; i++)
+        {
+            read(clnt_sock, &operands[i * OPSZ], OPSZ); // 根据操作数数量，依次读取操作数
+        }
+
+        char operator;
+        read(clnt_sock, &operator, 1); // 读取运算符
+
+        int result = calculate(operand_count, (int *)operands, operator);
+        write(clnt_sock, (char *)&result, sizeof(result)); // 发送计算结果
+        close(clnt_sock);
+    }
+    close(serv_sock);
+    return 0;
+}
+
+int calculate(int operand_count, int operands[], char operator)
+{
+    int result = operands[0];
+    switch (operator)
+    {
+    case '+':
+        for (int i = 1; i < operand_count; i++)
+            result += operands[i];
+        break;
+    case '-':
+        for (int i = 1; i < operand_count; i++)
+            result -= operands[i];
+        break;
+    case '*':
+        for (int i = 1; i < operand_count; i++)
+            result *= operands[i];
+        break;
+    }
+    return result;
+}
+
+void error_handling(char *message)
+{
+    fputs(message, stderr);
+    fputc('\n', stderr);
+    exit(1);
+}
+```
+
+<br>
+
+### TCP 原理
+
+调用 write 函数，数据先移入到输出缓冲，之后选择合适时间传输到对方输入缓冲内；
+
+调用 read 函数，读取输入缓冲中的内容；
+
+套接字对应的 IO 特性
+
+1. I/O 缓冲在每个套接字中单独存在。
+2. I/O 缓冲在创建套接字时自动生成。
+3. 即使关闭套接字也会继续传递输出缓冲中遗留的数据。
+4. 关闭套接字将丢失输入缓冲中的数据。
+
+<br>
+
+## 基于 UDP 的服务器端和客户端
+
+<br>
+
+### 实现基于 UDP 的服务器端可客户端
+
+UDP 重要特性
+
+1. UDP 无需调用 listen 以及 accept 建立连接
+2. UDP 仅有创建套接字过程和数据交换过程
+3. 无论服务端还是客户端都只需要 1 个套接字
+4. UDP 是无状态的，故每次传输都必须加上目标地址
+
+<br>
+
+### UDP 收发函数
+
+```cpp
+#include <sys/socket.h>
+
+// 参数：sock：UDP 套接字文件描述符; buff：用户保存接收的数据; nbytes：可接收的最大字节数;
+// flags：可选项参数，没有则为 0; to：包含目标地址信息; addrlen：包含目标地址信息的结构体变量的长度
+// 返回值：成功时返回接收的字节数，失败时返回 -1。
+ssize_t sendto(int sock, void* buff, size_t nbytes, int flags, struct sockaddr* to, socklen_t addrlen);
+```
+
+<br>
+
+```cpp
+#include <sys/socket.h>
+
+// 参数：sock：UDP 套接字文件描述符; buff：待传输的数据; nbytes：待传输的数据长度（单位是字节）;
+// flags：可选项参数，没有则为 0; from：用来存储发送端的地址信息; addrlen：包含发送端地址信息的结构体变量的长度
+// 返回值：成功时返回传输的字节数，失败时返回 -1。
+ssize_t recvfrom(int sock, void* buff, size_t nbytes, int flags, struct sockaddr* from, socklen_t *addrlen);
+```
+
+> UDP 如果在调用 sendto 函数式发现未分配地址信息，则首次调用 sendto 函数时会自动为套接字分配 IP 和端口
+
+<br>
+
+### UDP 传输特性与 connect 函数
+
+#### 存在数据边界的 UDP 套接字
+
+UDP 是存在数据边界的协议；  
+即强调输入函数的调用次数必须等于输出函数的调用次数！
+
+只有这样才可以确保数据完整性
+
+<br>
+
+#### 已连接与未连接套接字
+
+通过 sendto 传输数据过程可分为：
+
+1. 向 UDP 套接字注册 IP 与端口
+2. 传输数据
+3. 删除 UDP 套接字中注册的目标地址信息
+
+当需要长时间链接时，把 UDP 变成已连接套接字就会节省掉步骤 1、3 所消耗的时间
+
+<br>
+
+#### 创建已经链接的 UDP 套接字
+
+```cpp
+// adr为目标地址信息
+connect(sock, (struct sockaddr*)&adr, sizeof(adr));
+```
+
+<br>
+
+## 优雅的断开套接字链接
+
+### 什么是半关闭状态？
+
+比如两台主机双向通信，A 主机正在传输数据的瞬间立刻执行 close 函数关闭链接，则 B 主机立刻停止接收任何数据，故仍在路上传输的数据就会被丢弃！！！
+
+半关闭指的是：可传输数据但无法接收、不可传输但是可接受，两种主要状态
+
+<br>
+
+### 使用 shutdown 函数断开
+
+```cpp
+#include <sys/socket.h>
+
+// shutdown函数只断开其中一个流
+// sock：需要断开的套接字，howto：断开的方式
+int shutdown(int sock, int howto);
+```
+
+第二个参数，断开的方式，可以选择以下三种的一个：
+
+1. `SHUT_RD`：断开输入流，此后套接字无法接收数据；
+2. `SHUT_WR`：断开输出流，此后套接字无法发送数据；
+3. `SHUT_RDWR`：同时断开 I/O 流。
+
+<br>
+
+### 基于半关闭状态的服务器和客户端代码
+
+首先来看看服务器代码
+
+```cpp
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+
+#define BUF_SIZE 30
+void error_handling(char *message);
+
+int main(int argc, char *argv[])
+{
+    int serv_sd, clnt_sd;
+    FILE *fp;
+    char buf[BUF_SIZE];
+    int read_cnt;
+
+    struct sockaddr_in serv_adr, clnt_adr;
+    socklen_t clnt_adr_sz;
+
+    if (argc != 2)
+    {
+        printf("Usage: %s <port>\n", argv[0]);
+        exit(1);
+    }
+
+    fp = fopen("file_server.c", "rb");
+    serv_sd = socket(PF_INET, SOCK_STREAM, 0);
+
+    memset(&serv_adr, 0, sizeof(serv_adr));
+    serv_adr.sin_family = AF_INET;
+    serv_adr.sin_addr.s_addr = htonl(INADDR_ANY);
+    serv_adr.sin_port = htons(atoi(argv[1]));
+
+    bind(serv_sd, (struct sockaddr *)&serv_adr, sizeof(serv_adr));
+    listen(serv_sd, 5);
+
+    clnt_adr_sz = sizeof(clnt_adr);
+    clnt_sd = accept(serv_sd, (struct sockaddr *)&clnt_adr, &clnt_adr_sz); // 这里 accept 函数只调用了一次，此程序一次运行期间实际上只能接受一次连接。
+
+    while (1)
+    {
+        read_cnt = fread((void *)buf, 1, BUF_SIZE, fp);
+        if (read_cnt < BUF_SIZE)
+        {
+            write(clnt_sd, buf, read_cnt);
+            break;
+        }
+        write(clnt_sd, buf, BUF_SIZE);
+    }
+
+    shutdown(clnt_sd, SHUT_WR);   // 关闭了输出流
+    read(clnt_sd, buf, BUF_SIZE); // 还可以继续接收数据
+    printf("Message from client: %s \n", buf);
+
+    fclose(fp);
+    close(clnt_sd);
+    close(serv_sd);
+    return 0;
+}
+
+void error_handling(char *message)
+{
+    fputs(message, stderr);
+    fputc('\n', stderr);
+    exit(1);
+}
+```
+
+<br>
+
+再看看客户端的
+
+```cpp
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+
+#define BUF_SIZE 30
+void error_handling(char *message);
+
+int main(int argc, char *argv[])
+{
+    int sd;
+    FILE *fp;
+
+    char buf[BUF_SIZE];
+    int read_cnt;
+    struct sockaddr_in serv_adr;
+    if (argc != 3)
+    {
+        printf("Usage: %s <IP> <port>\n", argv[0]);
+        exit(1);
+    }
+
+    fp = fopen("receive.dat", "wb");
+    sd = socket(PF_INET, SOCK_STREAM, 0);
+
+    memset(&serv_adr, 0, sizeof(serv_adr));
+    serv_adr.sin_family = AF_INET;
+    serv_adr.sin_addr.s_addr = inet_addr(argv[1]);
+    serv_adr.sin_port = htons(atoi(argv[2]));
+
+    connect(sd, (struct sockaddr *)&serv_adr, sizeof(serv_adr));
+
+    while ((read_cnt = read(sd, buf, BUF_SIZE)) != 0)
+        fwrite((void *)buf, 1, read_cnt, fp);
+
+    puts("Received file data");
+    write(sd, "Thank you", 10);
+    fclose(fp);
+    close(sd);
+    return 0;
+}
+
+void error_handling(char *message)
+{
+    fputs(message, stderr);
+    fputc('\n', stderr);
+    exit(1);
+}
+```
+
+<br>
+
+## 域名及网络地址
+
+<br>
+
+### 域名系统
+
+DNS 域名系统，可以将 IP 和域名之间进行相互转换
+
+当前级别 DNS 服务器无法识别当前域名或者 IP 时，会自动请求上一级 DNS 服务器
+
+<br>
+
+### IP 与域名之间转换
+
+#### 利用域名获取 IP
+
+```cpp
+#include <netdb.h>
+
+// 返回包含IP地址详细信息的指针
+struct hostent* gethostbyname(const char* hostname);
+```
+
+<br>
+
+## 套接字的多种可选项
+
+<br>
+
+### 套接字可选项与 IO 缓冲大小
+
+IO 可选项有以下三个主要层次：
+
+1. `IPPROTO_IP`：IP 协议相关事项；
+2. `IPPROTO_TCP`：TCP 协议相关事项；
+3. `SOL_SOCKET`：套接字相关的通用可选项。
+
+<br>
+
+读取和设置套接字可选项（但有些可选项是只读的，这里要注意！）
+
+```cpp
+#include <sys/socket.h>
+// sock 套接字
+// level 可选项的协议层
+// optname 可选项名
+// optval 保存查看结果的缓冲地址值
+// optlen 向第四个参数传递缓冲大小
+int getsockopt(int sock, int level, int optname, void* optval, socklen_t* optlen);
+
+// 对应参数和getsockopt一致
+int setsockopt(int sock, int level, int optname, void* optval, socklen_t optlen);
+```
+
+<br>
+
+`SO_SNDBUF` 可选项表示输出缓冲大小相关信息  
+`SO_RCVBUF` 可选项表示输入缓冲大小相关信息。
+
+缓冲区大小可以被更改，但是仍然会有些许出入
+
+<br>
+
+### SO_REUSEADDR
+
+#### Time-wait 状态
+
+TCP 协议中的一种状态，指的是 TCP 连接关闭后，等待一段时间以确保远程端口收到了 ACK 确认报文段后进入的一种状态
+
+在 TCP 协议中，一旦连接关闭，就会生成一个 FIN 报文段，向远程主机发送关闭请求。此时，如果远程主机发送了 ACK 确认报文段，但是这个 ACK 丢失了，那么本地主机就会一直等待，直到超时时间（超时时间通常是 2 倍的最大报文段生存时间（Maximum Segment Lifetime，MSL），MSL 的典型值为 2 分钟）结束，才会离开 `time-wait` 状态
+
+<br>
+
+#### 地址分配错误（binding error）
+
+服务器端使用 ctrl+c 强行终止程序后，会陷入 time-wait 状态，若此时立即以同一端口号重新运行服务器端，即发生 Binding error  
+故只能等待几分钟后再重启服务器
+
+客户端强行终止不会有任何影响
+
+<br>
+
+#### 地址再分配
+
+将 `SO_REUSEADDR` 设置为 1，表示允许重分配 time-wait 状态下的端口号
+
+默认 `SO_REUSEADDR` 值为 0，则为不允许
+
+<br>
+
+### TCP_NODELAY
+
+#### Nagle 算法
+
+> `Nagle` 算法是一种改善 TCP 网络传输性能的算法，它的主要作用是减少网络传输的小分组数目，从而提高网络传输效率
+
+`Nagle` 算法的基本实现思想：当发送端发送一个数据包后，如果当前缓存区中还有数据未被发送，那么就将这个数据包放入缓存区中，等待一段时间再发送。
+
+等待时间是通过 `TCP_NODELAY` 选项来设置的，一般情况下默认为开启状态，即不等待，立即发送。  
+当需要启用 Nagle 算法时，需要将 TCP_NODELAY 选项设置为关闭状态。
+
+优点：避免大流量  
+缺点：产生 N 多个小体积包，加大网络负载；降低传输速度，因为需要等待 ACK 报文，特别是传输大文件的时候；
+
+<br>
+
+## 多进程服务器端
+
+<br>
+
+###
