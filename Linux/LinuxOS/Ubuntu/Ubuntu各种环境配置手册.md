@@ -1,5 +1,54 @@
 ## IDE
 
+### GIT
+
+#### 配置 GITHUB
+
+安装 GIT：`sudo apt-get install git`  
+安装 SSH：`sudo apt-get install openssh-server`
+
+<br>
+
+配置你注册 github 时的用户信息（如果你想要在后续同时配置 github 和 gitee 仓库，那么请保证下面填写的信息和 gitee 中的账户信息完全一致！）
+
+终端输入：
+
+```sh
+git config --global user.email "你注册github的邮箱"
+git config --global user.name "你注册github的用户名"
+```
+
+<br>
+
+首先来到家目录，也就是你打开终端是最初的所在路径  
+新建一个文件夹：`mkdir .ssh` （新建之前你可以使用`cd .ssh`试探一下该文件夹是否存在，如果存在就不需要新建了！）
+
+在当前目录下生成密钥文件"github_rsa.pub"  
+`ssh-keygen -t rsa -C "在这里输入任何内容，最好是邮箱"`
+
+注意，ssh-keygen 会生成两个文件：`id-rsa`和`id-rsa.pub`  
+我们需要查看第二个后缀为 pub 的文件，这就是密钥文件
+
+查看文件，并复制文件内的所有内容：`cat id-rsa.pub`
+
+<br>
+
+进入 github 官网，登录用户后依次点击：右上角头像->settings->SSH and GPG Keys
+
+点击`new ssh key`  
+新建 key 的 title 可以瞎写  
+然后最下方的 key 就粘贴进我们复制的 pub 文件内的所有内容，然后点击 `add ssh key`
+
+> 如果复制的内容末尾有空格或者换行啥的，务必删掉！！！
+
+<br>
+
+最后！！！最关键的一步
+
+当然是连接到我们的 github 上面去啦 `ssh -T git@github.com`
+
+<br>
+
 ### QT
 
 #### 安装配置
@@ -101,6 +150,87 @@ int main(){
 
 <br>
 
+### QEMU
+
+> QEMU 在模拟 linux 操作系统上作用巨大，可以帮助你在不购买 linux 开发板的情况下依然可以完美运行操作系统来完成实验
+
+<br>
+
+#### 完整安装流程
+
+准备一个 ubuntu 系统，可以是虚拟机也可以是物理机
+
+首先设置允许使用虚拟化，终端直接执行：
+
+```sh
+egrep -c '(vmx|svm)' /proc/cpuinfo
+```
+
+安装运行 QEMU 必备的环境与软件包
+
+```sh
+sudo apt install qemu-kvm qemu-system qemu-utils python3 python3-pip libvirt-clients libvirt-daemon-system bridge-utils virtinst libvirt-daemon virt-manager -y
+```
+
+安装的软件包主要关注以下这几个：
+
+- `qemu-kvm` QEMU-KVM 将 QEMU 和 KVM 结合在一起，利用 KVM 提供的硬件虚拟化扩展加速虚拟化过程，同时利用 QEMU 提供的设备模拟功能来管理虚拟机的硬件资源，给予使用者几乎原生的体验。
+- `libvirt-daemon` 其为 libvirt 库的一部分，它是一种用于管理虚拟化平台的后台守护进程，负责与虚拟化平台进行通信，并提供统一的接口供其他应用程序或工具使用
+- `virt-manager` 一个基于图形界面的虚拟机管理工具，用于管理和控制基于 libvirt 的虚拟化平台
+
+<br>
+
+执行以下代码，确保已经打开了 libvirt 守护进程
+
+```sh
+sudo apt install libvirt-daemon
+sudo systemctl enable libvirtd
+sudo systemctl start libvirtd
+```
+
+查看当前 libvirt 运行状态
+
+```sh
+sudo systemctl status libvirtd.service
+```
+
+<br>
+
+配置默认网络
+
+```sh
+sudo virsh net-autostart default # 设置自动开启
+sudo virsh net-list --all # 列出当前network状态
+```
+
+<br>
+
+安装完毕，运行图形化虚拟机管理程序
+
+```sh
+virt-manager
+```
+
+看见下面的界面后，双击`QEMU/KVM`，如果链接过程没有任何报错的话，那就表明安装成功了！
+
+<br>
+
+#### 部分错误处理
+
+部分情况下会出现：明明已经确认开启了 libvirt 服务，但是在 virt-manager 链接时总是报错说 libvirt 服务未开启
+
+直接以 root 身份进入文件夹：`/var/run/libvirt` 后修改文件 `libvirt-sock`的权限为 777
+
+```sh
+sudo -s
+cd /var/run/libvirt
+chmod 777 libvirt-sock
+```
+
+权限修改完毕，确认 libvirt 服务器已开启后，链接虚拟机，成功！
+
+<br>
+
 ### pycharm
 
 推荐直接使用 pycharm 社区版，免费
@@ -135,5 +265,3 @@ cd bin # 进入bin文件夹
 ### docker
 
 <br>
-
-### cmake
