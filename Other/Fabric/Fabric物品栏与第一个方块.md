@@ -141,3 +141,155 @@ public class ModItemGroup {
 物品栏内部有两个我们上一期制作的自定义物品
 
 ![](./img/fb-inv/fi2.png)
+
+<br>
+
+## 创建方块
+
+> 资源文件下载：https://kaupenjoe.net/files/Minecraft/Videos/MBKJ2023-51%20-%20Fabric%201.20.X%20Blocks/
+
+<br>
+
+### 方块注册流程
+
+方块注册和物品注册基本上没啥区别
+
+但要注意，对于方块，需要注册两次：一次是注册手上拿着的物品，一次是注册放在地上的方块
+
+创建管理方块注册的类：`com/example/block/ModBlocks.json`
+
+```java
+package com.example.block;
+
+import com.example.TutorialMod;
+import net.fabricmc.fabric.api.item.v1.FabricItemSettings;
+import net.fabricmc.fabric.api.object.builder.v1.block.FabricBlockSettings;
+import net.minecraft.block.Block;
+import net.minecraft.block.Blocks;
+import net.minecraft.item.BlockItem;
+import net.minecraft.item.Item;
+import net.minecraft.registry.Registries;
+import net.minecraft.registry.Registry;
+import net.minecraft.sound.BlockSoundGroup;
+import net.minecraft.util.Identifier;
+
+public class ModBlocks {
+
+    // copyOf表示直接复制现有方块的属性（比如硬度、可开采性以及亮度可堆叠啥的）
+    // sounds表示直接复制现有方框的声音（如行走表面声音、破坏声音）
+    public static final Block ZER_BLOCK = regBlock("zer_block",
+            new Block(FabricBlockSettings.copyOf(Blocks.IRON_BLOCK).sounds(BlockSoundGroup.AMETHYST_BLOCK)));
+
+    public static final Block RAW_ZER_BLOCK = regBlock("raw_zer_block",
+            new Block(FabricBlockSettings.copyOf(Blocks.IRON_BLOCK).sounds(BlockSoundGroup.AMETHYST_BLOCK)));
+
+    // 再注册可放置的实体方块
+    private static Block regBlock(String name, Block block){
+        regBlockItem(name, block);
+        return Registry.register(
+                Registries.BLOCK,
+                new Identifier(TutorialMod.MOD_ID,name),
+                block
+        );
+    }
+
+    // 先注册方块物品
+    private static Item regBlockItem(String name, Block block){
+        return Registry.register(
+                Registries.ITEM,
+                new Identifier(TutorialMod.MOD_ID,name),
+                new BlockItem(block, new FabricItemSettings())
+        );
+    }
+
+    public static void registerModBlocks(){
+        TutorialMod.LOGGER.debug(TutorialMod.MOD_ID+"的方块已加载完毕");
+    }
+}
+```
+
+<br>
+
+最后别忘了在主入口中执行初始化
+
+```java
+package com.example;
+
+import com.example.block.ModBlocks;
+import com.example.item.ModItemGroup;
+import com.example.item.ModItems;
+import net.fabricmc.api.ModInitializer;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class TutorialMod implements ModInitializer {
+    ...
+
+	@Override
+	public void onInitialize() {
+		ModItems.registerModItems();
+		ModBlocks.registerModBlocks(); // 初始化方块管理类
+		ModItemGroup.registerItemGroup();
+	}
+}
+```
+
+<br>
+
+### 材质纹理处理
+
+#### blockstates
+
+方块状态文件夹下创建 `blockstates/zer_block.json`
+
+```json
+{
+	"variants": {
+		"": {
+			"model": "tutorialmod:block/zer_block"
+		}
+	}
+}
+```
+
+<br>
+
+#### models/block
+
+在这里设置方块的渲染模型，创建文件 `models/block/zer_block.json`
+
+```json
+{
+	"parent": "block/cube_all",
+	"textures": {
+		"all": "tutorialmod:block/zer_block"
+	}
+}
+```
+
+<br>
+
+#### models/item
+
+创建手持方块的模型，创建文件 `models/item/zer_block.json`
+
+这里不需要写啥了，直接继承前面定义的方块模型即可
+
+```json
+{
+	"parent": "tutorialmod:block/zer_block"
+}
+```
+
+<br>
+
+然后就是翻译文件的内容添加啦，这里就不多做赘述了，大家按照这个模板来做就可以了
+
+<br>
+
+### 成果展示
+
+![](./img/fb-inv/fi3.png)
+
+<br>
