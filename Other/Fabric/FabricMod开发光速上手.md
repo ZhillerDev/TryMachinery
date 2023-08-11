@@ -755,3 +755,504 @@ https://crafting.thedestruc7i0n.ca/
 <br>
 
 ## 挖掘等级与掉落物
+
+<br>
+
+### 挖掘等级
+
+> 挖掘等级用于确定你生成的方块能否被挖掘，以及可以使用何种工具进行挖掘
+
+<br>
+
+#### 标准等级配置
+
+首先按照下图所示创建这些文件夹和 json 文件  
+根目录 data 和 asstes 同级！
+
+![](./img/fb-imm/f1.png)
+
+json 文件默认内容均为：
+
+```json
+{
+	"replace": false,
+	"values": []
+}
+```
+
+<br>
+
+mineable 文件夹下四个文件分别对应斧头、锄头、镐子、铲子可以破坏的对应方块
+
+把你新注册的自定义方块的 id 塞进 values 里面，就表示可以使用这一类工具来破坏
+
+比如我想使用 pickaxe，也就是镐子来破坏宝石方块，那么我应该在 `pickaxe.json` 里面写：
+
+```json
+{
+	"replace": false,
+	"values": ["tutorialmod:zer_block", "tutorialmod:raw_zer_block"]
+}
+```
+
+<br>
+
+任何一个以“needs”开头的文件均表示方块可以被哪一种等级的工具所挖掘  
+目前只有四种等级：
+
+- level_4 最高级，即下界合金工具可破坏
+- diamond
+- iron
+- stone
+
+比如我想让我的方块只能被石质材料的工具破坏，那么我需要在 `needs_stone_tool.json` 里面写对应的 id
+
+```json
+{
+	"replace": false,
+	"values": [
+		"tutorialmod:zer_block",
+		"tutorialmod:zer_ore",
+		"tutorialmod:nether_zer_ore"
+	]
+}
+```
+
+<br>
+
+总而言之，你需要设置两次：
+
+1. 第一次，在对应的工具 json 文件内设置，确定方块可被破坏的最佳工具
+2. 第二次，在对应的工具等级 json 文件内设置，确定方块可被破坏的工具等级
+
+<br>
+
+#### 易错点分析
+
+`needs_tool_level_4.json` 可被下界合金工具破坏的方块，这个文件只能在上图显示的固定文件夹内书写！
+
+上图所示的所有文件以及文件夹名称都是死规定！别乱改！照抄就可以了！！！
+
+<br>
+
+### 战利品与掉落物
+
+对于某些特殊的方块，我们需要设置不同类型的掉落物
+
+- 普通方块：掉落方块本身
+- 矿石方块：掉落一定数量的矿石原矿
+
+<br>
+
+掉落物配置请在该文件夹下配置：`tutorialmod/loot_tables/blocks`，每个方块对应一种掉落方式！
+
+![](./img/fb-imm/f2.png)
+
+<br>
+
+#### 普通方块掉落物
+
+> 在这里推荐一个快速生成 loot_tabels 的网站，可以提升开发效率：https://misode.github.io/loot-table/
+
+比如挖掘一个普通方块，直接掉落他自身，那就不需要过多设置，直接抄下方代码即可  
+你要修改的地方就是我加注释的地方
+
+代码清单 `zer_block.json`
+
+```json
+{
+	"type": "minecraft:block",
+	"pools": [
+		{
+			"bonus_rolls": 0.0,
+			"conditions": [
+				{
+					"condition": "minecraft:survives_explosion"
+				}
+			],
+			"entries": [
+				{
+					"type": "minecraft:item",
+					"name": "tutorialmod:zer_block" // 把他修改为方块ID
+				}
+			],
+			"rolls": 1.0
+		}
+	]
+}
+```
+
+<br>
+
+#### 矿石方块掉落物
+
+矿石挖掘后会掉落任意数量的矿石原矿，需要人为指定这个范围
+
+同样的，你只需要修改下方代码注释部分，其他的保持默认直接套用即可
+
+```json
+{
+	"type": "minecraft:block",
+	"pools": [
+		{
+			"bonus_rolls": 0.0,
+			"entries": [
+				{
+					"type": "minecraft:alternatives",
+					"children": [
+						{
+							"type": "minecraft:item",
+							"conditions": [
+								{
+									"condition": "minecraft:match_tool",
+									"predicate": {
+										"enchantments": [
+											{
+												"enchantment": "minecraft:silk_touch",
+												"levels": {
+													"min": 1
+												}
+											}
+										]
+									}
+								}
+							],
+							// 设置你的方块ID
+							"name": "tutorialmod:end_stone_zer_ore"
+						},
+						{
+							"type": "minecraft:item",
+							"functions": [
+								{
+									"add": false,
+									"count": {
+										"type": "minecraft:uniform",
+										// 挖掘后掉落物的数量范围
+										"max": 6.0,
+										"min": 4.0
+									},
+									"function": "minecraft:set_count"
+								},
+								{
+									"enchantment": "minecraft:fortune",
+									"formula": "minecraft:ore_drops",
+									"function": "minecraft:apply_bonus"
+								},
+								{
+									"function": "minecraft:explosion_decay"
+								}
+							],
+							// 挖掘后掉落的物品或者方块
+							"name": "tutorialmod:zer_diamond"
+						}
+					]
+				}
+			],
+			"rolls": 1.0
+		}
+	],
+	"random_sequence": "minecraft:blocks/copper_ore"
+}
+```
+
+<br>
+
+## 自定义物品与方块
+
+<br>
+
+### 自动侦测矿藏工具
+
+> 探测器纹理下载地址： https://url.kaupenjoe.net/mbkj57/assets
+
+众所周知，正经人永远不喜欢常规套路挖矿，如果能有一个自定探测脚下矿藏的工具就好了~  
+接下来我们将会一步步实现该工具
+
+<br>
+
+#### 工具功能
+
+耐久 64，右击方块使用，每次使用无论找到矿藏与否均销毁一点耐久
+
+被右击的方块向下勘察 128 个方块，如果存在铁或者钻石矿石，就会在聊天框反馈给玩家  
+反之，如果找不到，就输出失败信息
+
+<br>
+
+#### 实现
+
+首先创建一个单独的 custom 文件夹，存储我们自定义的物品
+
+新建类 `MetalDetectorItem.java` 具体位置可以查看下图  
+![](./img/fb-imm/f3.png)
+
+<br>
+
+主要代码如下，相信你一定可以看得懂的！
+
+tips：使用 `alt+insert` 快捷键可以快速添加构造函数哦
+
+```java
+package com.example.item.custom;
+
+import net.minecraft.block.Block;
+import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemUsageContext;
+import net.minecraft.text.Text;
+import net.minecraft.util.ActionResult;
+import net.minecraft.util.math.BlockPos;
+
+import java.util.Objects;
+
+// extends继承父类Item
+public class MetalDetectorItem extends Item {
+
+    // 别忘了构造函数
+    public MetalDetectorItem(Settings settings){
+        super(settings);
+    }
+
+    // 当物品对方块使用的时候（即右键点击方块）
+    @Override
+    public ActionResult useOnBlock(ItemUsageContext context) {
+        // 如果是客户端
+        if(!context.getWorld().isClient()){
+            // 获取方块位置以及玩家位置，并初始化foundBlock变量以确定是否找到方块
+            BlockPos posClicked = context.getBlockPos();
+            PlayerEntity player = context.getPlayer();
+            boolean foundBlock = false;
+
+            // 据方块坐标，以Y轴为基准向下勘察128格
+            // posClicked.down(i)表示当前坐标向下i格
+            for(int i=0;i<=posClicked.getY()+128;i++){
+                // 逐个获取对应方块状态
+                BlockState state = context.getWorld().getBlockState(posClicked.down(i));
+                // 判断方块状态如果符合条件，输出成功信息
+                if(isTargetBlock(state)){
+                    assert player != null;
+                    outputTargetBlockCoordinates(
+                            posClicked.down(i),
+                            player,
+                            state.getBlock()
+                    );
+                    foundBlock=true;
+                    break;
+                }
+            }
+
+            // 如果啥都找不到，输出失败信息
+            if(!foundBlock){
+                assert player != null;
+                player.sendMessage(
+                        Text.literal("No Target Ore Found!!!")
+                );
+            }
+
+            // 最后别忘了给玩家手上拿着的物品（也就是我探测器）加上1损耗
+            context.getStack().damage(1, Objects.requireNonNull(context.getPlayer()), player1 -> {
+                player1.sendToolBreakStatus(player1.getActiveHand());
+            });
+        }
+        return ActionResult.SUCCESS;
+    }
+
+    // 探测指定方块是不是铁矿石或者钻石矿石的函数
+    private boolean isTargetBlock(BlockState state){
+        return state.isOf(Blocks.IRON_ORE) || state.isOf(Blocks.DIAMOND_ORE);
+    }
+
+    // 输出矿藏坐标的函数
+    private void outputTargetBlockCoordinates(BlockPos blockPos, PlayerEntity player, Block block){
+        player.sendMessage(
+                Text.literal("Target Ore:"+block.asItem().getName().getString()+" at ("+blockPos.getX()+","+blockPos.getY()+","+blockPos.getZ()+")"),
+                false
+        );
+    }
+}
+
+```
+
+<br>
+
+#### 执行结果
+
+![](./img/fb-imm/f4.png)
+
+<br>
+
+### 自定义音乐方块
+
+和自定义物品一样，我们新建一个 custom 文件夹存储自定义的方块
+
+按照下图所示位置创建自定义音乐盒方块 `SoundBlock.java`  
+![](./img/fb-imm/f5.png)
+
+<br>
+   
+音乐盒的代码很简单，就是右键点击一次就发出一个声音
+
+代码清单 `SoundBlock.java`
+
+```java
+package com.example.block.custom;
+
+import net.minecraft.block.Block;
+import net.minecraft.block.BlockState;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvent;
+import net.minecraft.sound.SoundEvents;
+import net.minecraft.util.ActionResult;
+import net.minecraft.util.Hand;
+import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.World;
+
+public class SoundBlock extends Block {
+    public SoundBlock(Settings settings) {
+        super(settings);
+    }
+
+    // onUse即为右键点击
+    @Override
+    public ActionResult onUse(BlockState state, World world, BlockPos pos, PlayerEntity player, Hand hand, BlockHitResult hit) {
+        // 在玩家所在位置播放一个声音
+        world.playSound(player,pos, SoundEvents.BLOCK_NOTE_BLOCK_BASS.value(), SoundCategory.BLOCKS,1f,1f);
+        return ActionResult.SUCCESS;
+    }
+}
+```
+
+<br>
+
+注意，我们在 ModBlocks 里面注册这个方块的时候，不要人为指定 sounds，否则会导致声音播放失败！
+
+这是注册方块的写法
+
+```java
+public static final Block SOUND_BLOCK = regBlock("sound_block",
+            new SoundBlock(FabricBlockSettings.copyOf(Blocks.WHITE_WOOL)));
+```
+
+<br>
+
+### 自定义食物
+
+> 番茄纹理下载：https://url.kaupenjoe.net/mbkj61/assets
+
+我们将制作一个番茄，它吃下去会有一定效果
+
+<br>
+
+新建类 `AwfulTomatoFood.java` 用于表示我们的食物
+
+代码清单
+
+```java
+package com.example.item.food;
+
+import net.minecraft.command.argument.NbtCompoundArgumentType;
+import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.entity.effect.StatusEffects;
+import net.minecraft.item.FoodComponent;
+import net.minecraft.item.FoodComponents;
+import net.minecraft.nbt.NbtCompound;
+
+public class AwfulTomatoFood {
+    // 定义一个食物，使用FoodComponent.Builder
+    public static final FoodComponent AWFUL_TOMATO = new FoodComponent.Builder()
+            // 补充的饥饿值
+            .hunger(2)
+            // 设置饱和度（即饥饿值开始掉之前先消耗饱和度）
+            .saturationModifier(0.25f)
+
+            // 添加吃后的药水效果
+            // 参数一：药水效果，参数二：获得效果的几率
+            .statusEffect(new StatusEffectInstance(StatusEffects.POISON,200),0.5f)
+            .statusEffect(new StatusEffectInstance(StatusEffects.INSTANT_DAMAGE,1),0.25f)
+
+            // 饥饿值满的时候也可以吃
+            .alwaysEdible()
+            // 可以喂狗吃
+            .meat()
+            // 指定该食物是一个零食，此时你吃起来就会非常快（大概是吃普通食物耗费时间的一半）
+            .snack()
+            .build();
+}
+```
+
+<br>
+
+注册时不要再像之前注册自定义物品一样直接用这个类！请按照如下代码进行注册
+
+代码清单 `ModItems.java`
+
+```java
+// 要明确告诉编译器你需要注册一个食物，用到FabricItemSettings().food()
+public static final Item AWFUL_TOMATO_FOOD = regItem("awful_tomato",
+        new Item(new FabricItemSettings().food(AwfulTomatoFood.AWFUL_TOMATO)));
+```
+
+<br>
+
+### 自定义燃料
+
+定义燃料很简单，直接像根据定义普通物品一样定义即可
+
+代码清单 `ModItems.java`
+
+```java
+package com.example.item;
+
+import com.example.TutorialMod;
+import com.example.item.custom.MetalDetectorItem;
+import com.example.item.food.AwfulTomatoFood;
+import net.fabricmc.fabric.api.item.v1.FabricItemSettings;
+import net.fabricmc.fabric.api.itemgroup.v1.FabricItemGroupEntries;
+import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
+import net.fabricmc.fabric.api.registry.FuelRegistry;
+import net.minecraft.item.Item;
+import net.minecraft.registry.Registries;
+import net.minecraft.registry.Registry;
+import net.minecraft.util.Identifier;
+
+
+public class ModItems {
+
+    ...
+
+    // 定义燃料物品
+    public static final Item COAL_BRIQUETTE = regItem("coal_briquette",
+            new Item(new FabricItemSettings()));
+
+    private static Item regItem(String name,Item item){
+        return Registry.register(Registries.ITEM,new Identifier(TutorialMod.MOD_ID,name),item);
+    }
+
+    public static void registerModItems(){
+        TutorialMod.LOGGER.debug("TutorialMod正在注册Items，MOD_ID:"+TutorialMod.MOD_ID);
+
+        // 在这里使用FuelRegistry注册燃料
+        // 参数一：欲注册的燃料名称
+        // 参数二：燃料热值（200即为在普通熔炉下熔炼一个物品的时长，这个时间在应用到高炉内是按比例的）
+        FuelRegistry.INSTANCE.add(ModItems.COAL_BRIQUETTE,200);
+    }
+}
+```
+
+<br>
+
+这里有一个关键概念要搞清楚
+
+`FuelRegistry.INSTANCE.add` 接收的第二个参数应该理解为燃料热值，即 200 为一个标准值，能熔炼一个物品；  
+同理，在高炉中，由于热值固定，所以依然只够熔炼一个物品；  
+不应该将其理解为燃烧时长，否则移动到高炉里面就是两倍的熔炼时长了，这显然不对！！！
+
+<br>
+
+## 工具盔甲组
+
+<br>
