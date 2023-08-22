@@ -220,8 +220,34 @@ GROUP BY
 
 <br>
 
-#### 综合大题
+### SQL 必知必会
 
 <br>
 
-### SQL 必知必会
+## 力扣刷题
+
+### SQL 标准 50 题
+
+#### null 定义
+
+当出现 null 值的时候，必须要自己写 `IS NULL` 或者 `IS NOT NULL` 来进行判断，才可以获取 null 值所执行的目标！！！
+
+<br>
+
+#### 左插入
+
+给定两张表 EmployeeUNI 和 Employees，他们分别有 unique_id 和 name 两列  
+将二者对应数据抽出来拼接为一个新的表
+
+```sql
+SELECT
+    EmployeeUNI.unique_id, Employees.name
+FROM
+    Employees
+LEFT JOIN
+    EmployeeUNI
+ON
+    Employees.id = EmployeeUNI.id;
+```
+
+<br>
