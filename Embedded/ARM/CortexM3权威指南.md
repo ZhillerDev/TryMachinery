@@ -888,3 +888,21 @@ NMI（Non-Maskable Interrupt，非屏蔽中断）是一种特殊类型的中断�
 <br>
 
 #### 存储器管理 faults
+
+触发该 faults 的原因有如下四点：
+
+- 访问了所有 MPU regions 覆盖范围之外的地址
+- 访问了没有存储器与之对应的空地址
+- 往只读 region 写数据
+- 用户级下访问了只允许在特权级下访问的地址
+
+<br>
+
+MemManage fault 被除能，则会上访成硬 faults  
+若该硬 faults 执行时又导致了 MemManage fault，则内核被锁定
+
+MemManage fault 必须被使能才能正常响应
+
+<br>
+
+#### 用法 faults
